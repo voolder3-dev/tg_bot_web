@@ -223,7 +223,7 @@ app.post("/api/send-media", requireAdmin, upload.single("file"), async (req, res
   const chatId = String(req.body?.chat_id || "");
   const caption = typeof req.body?.caption === "string" ? req.body.caption.trim() : "";
   const file = req.file;
-  if (!/^-?\\d+$/.test(chatId) || !file) {
+  if (!/^-?\d+$/.test(chatId) || !file) {
     return res.status(400).json({ ok: false, error: "Выбери файл и проверь Chat ID." });
   }
   if (caption.length > 1024) {
