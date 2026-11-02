@@ -49,7 +49,7 @@ function validSession(req) {
 function setSessionCookie(res) {
   const expiresAt = Math.floor(Date.now() / 1000) + SESSION_SECONDS;
   const token = expiresAt + "." + signSession(expiresAt);
-  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+  const secure = "; Secure";
   res.setHeader("Set-Cookie", COOKIE_NAME + "=" + encodeURIComponent(token) + "; HttpOnly; SameSite=Strict; Path=/; Max-Age=" + SESSION_SECONDS + secure);
 }
 function clearSessionCookie(res) {
