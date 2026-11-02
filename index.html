@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#090b14">
+<title>Telegram Bot Dashboard</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+:root{--bg:#090b14;--panel:#111522;--border:rgba(255,255,255,.08);--text:#edf0ff;--muted:#858da5;--purple:#8b5cf6;--blue:#38bdf8;--green:#22c55e;--red:#fb5364}
+*{box-sizing:border-box;margin:0;padding:0}
+body{min-height:100vh;background:radial-gradient(ellipse at 15% 0%,rgba(139,92,246,.13),transparent 40%),radial-gradient(ellipse at 90% 90%,rgba(56,189,248,.08),transparent 40%),var(--bg);color:var(--text);font-family:Inter,sans-serif;padding:25px}
+button,input,textarea{font:inherit}
+.container{max-width:1150px;margin:auto}
+.header{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:35px}
+.brand{display:flex;align-items:center;gap:13px}
+.logo{width:48px;height:48px;border-radius:15px;display:grid;place-items:center;font-size:25px;background:linear-gradient(135deg,#8b5cf6,#38bdf8);box-shadow:0 5px 25px rgba(139,92,246,.3)}
+.brand h1{font-size:19px;font-weight:800}.brand p{font-size:12px;color:var(--muted);margin-top:4px}
+.status{display:flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--border);border-radius:30px;background:rgba(255,255,255,.03);font-size:12px;color:var(--muted)}
+.dot{width:8px;height:8px;background:var(--green);border-radius:50%;box-shadow:0 0 12px var(--green)}
+.welcome{margin-bottom:25px}.welcome h2{font-size:clamp(23px,4vw,32px);font-weight:800;letter-spacing:-1px}.welcome p{color:var(--muted);margin-top:9px;font-size:14px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:22px}
+.card{background:rgba(17,21,34,.88);border:1px solid var(--border);border-radius:18px;padding:21px;transition:.25s ease}
+.card:hover{border-color:rgba(139,92,246,.4);transform:translateY(-3px)}
+.stat-label{color:var(--muted);font-size:12px}.stat-value{font-size:27px;font-weight:800;margin-top:12px}.stat-icon{font-size:20px;float:right}
+.dashboard{display:grid;grid-template-columns:1fr 1.2fr;gap:20px}
+.panel{background:rgba(17,21,34,.92);border:1px solid var(--border);border-radius:20px;padding:24px;min-width:0}
+.panel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:23px;gap:10px}.panel-header h3{font-size:16px;font-weight:700}.panel-header span{font-size:12px;color:var(--muted)}
+.field{margin-bottom:20px}.field label{display:block;font-size:12px;font-weight:600;margin-bottom:10px;color:#c4c9db}
+.input,.textarea{width:100%;background:#0c101c;border:1px solid rgba(255,255,255,.09);color:var(--text);border-radius:12px;padding:14px;outline:none;transition:.25s}
+.input:focus,.textarea:focus{border-color:var(--purple);box-shadow:0 0 0 3px rgba(139,92,246,.12)}
+.input::placeholder,.textarea::placeholder{color:#596177}.textarea{min-height:155px;resize:vertical;line-height:1.6}
+.hint{color:var(--muted);font-size:11px;margin-top:8px;line-height:1.5}
+.send-btn{width:100%;border:none;border-radius:12px;padding:15px;color:white;font-weight:700;font-size:14px;cursor:pointer;background:linear-gradient(110deg,#7c3aed,#4f8dfd);box-shadow:0 5px 22px rgba(124,58,237,.23);transition:.25s}
+.send-btn:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(124,58,237,.4);filter:brightness(1.12)}
+.send-btn:active{transform:scale(.98)}.send-btn:disabled{opacity:.55;cursor:wait;transform:none}
+.clear-btn{border:1px solid var(--border);color:var(--muted);background:rgba(255,255,255,.03);padding:8px 12px;border-radius:9px;font-size:11px;cursor:pointer;transition:.2s}
+.clear-btn:hover{color:white;border-color:var(--purple)}
+.log{height:400px;overflow-y:auto;padding-right:5px;display:flex;flex-direction:column;gap:11px}
+.log::-webkit-scrollbar{width:5px}.log::-webkit-scrollbar-thumb{background:#343b50;border-radius:10px}
+.log-entry{padding:13px;border-radius:12px;background:#0c101c;border:1px solid var(--border);animation:appear .3s ease;overflow-wrap:anywhere}
+@keyframes appear{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.log-meta{display:flex;justify-content:space-between;gap:10px;margin-bottom:8px;font-size:10px;color:var(--muted)}
+.log-message{font-size:12px;line-height:1.6;white-space:pre-wrap}
+.success{border-left:3px solid var(--green)}.success .log-type{color:var(--green)}
+.error{border-left:3px solid var(--red)}.error .log-type{color:var(--red)}
+.info{border-left:3px solid var(--blue)}.info .log-type{color:var(--blue)}
+.empty{text-align:center;color:#697188;margin:auto;font-size:13px;padding:25px 5px}
+.footer{text-align:center;color:#515970;font-size:11px;margin-top:25px}
+@media(max-width:750px){body{padding:16px}.stats{grid-template-columns:1fr;gap:10px}.card{padding:16px}.stat-value{font-size:23px}.dashboard{grid-template-columns:1fr}.panel{padding:19px}.log{height:320px}.header{margin-bottom:28px}}
+@media(max-width:380px){.brand h1{font-size:15px}.status{font-size:10px;padding:8px}}
+</style>
+</head>
+<body>
+<div class="container">
+<header class="header">
+  <div class="brand"><div class="logo">✈</div><div><h1>Telegram Dashboard</h1><p>Bot Management System</p></div></div>
+  <div class="status"><span class="dot"></span><span>Панель активна</span></div>
+</header>
+<section class="welcome"><h2>Панель управления</h2><p>Управляй отправкой сообщений своему Telegram-боту.</p></section>
+<section class="stats">
+  <div class="card"><span class="stat-icon">📨</span><div class="stat-label">Отправлено сообщений</div><div class="stat-value" id="sentCount">0</div></div>
+  <div class="card"><span class="stat-icon">⚠️</span><div class="stat-label">Ошибок отправки</div><div class="stat-value" id="errorCount">0</div></div>
+  <div class="card"><span class="stat-icon">⚡</span><div class="stat-label">Статус интерфейса</div><div class="stat-value" style="font-size:19px;color:#22c55e">ONLINE</div></div>
+</section>
+<main class="dashboard">
+<section class="panel">
+  <div class="panel-header"><h3>✉ Отправка сообщения</h3><span>Telegram API</span></div>
+  <form id="messageForm">
+    <div class="field"><label for="chatId">TELEGRAM CHAT ID</label><input class="input" id="chatId" type="text" placeholder="Например: 123456789" required><div class="hint">Укажи ID пользователя или чата, которому нужно отправить сообщение.</div></div>
+    <div class="field"><label for="message">ТЕКСТ СООБЩЕНИЯ</label><textarea class="textarea" id="message" placeholder="Напиши сообщение..." maxlength="4096" required></textarea><div class="hint">Максимальная длина: 4096 символов.</div></div>
+    <button class="send-btn" id="sendBtn" type="submit">➤ Отправить сообщение</button>
+  </form>
+</section>
+<section class="panel">
+  <div class="panel-header"><h3>◉ История событий</h3><button class="clear-btn" id="clearBtn" type="button">Очистить лог</button></div>
+  <div class="log" id="chatLog" aria-live="polite"><div class="empty" id="emptyMessage"><div style="font-size:30px;margin-bottom:12px">📭</div>История сообщений пока пуста.<br>Здесь появятся события бота.</div></div>
+</section>
+</main>
+<footer class="footer">Telegram Bot Dashboard · Management Interface</footer>
+</div>
+<script>
+/*
+ * SECURITY:
+ * Never put the Telegram bot token in this frontend file.
+ * Store it as a server-side environment variable.
+ * The backend endpoint /api/send must call:
+ * https://api.telegram.org/bot<TOKEN>/sendMessage
+ */
+const API_ENDPOINT = '/api/send';
+
+let sentCount = 0;
+let errorCount = 0;
+
+const form = document.getElementById('messageForm');
+const chatIdInput = document.getElementById('chatId');
+const messageInput = document.getElementById('message');
+const sendBtn = document.getElementById('sendBtn');
+const chatLog = document.getElementById('chatLog');
+
+function getTime() {
+  return new Date().toLocaleTimeString('ru-RU', {
+    hour: '2-digit', minute: '2-digit', second: '2-digit'
+  });
+}
+
+function addLog(type, title, message) {
+  const empty = document.getElementById('emptyMessage');
+  if (empty) empty.remove();
+
+  const entry = document.createElement('div');
+  entry.className = 'log-entry ' + type;
+
+  const meta = document.createElement('div');
+  meta.className = 'log-meta';
+
+  const typeLabel = document.createElement('span');
+  typeLabel.className = 'log-type';
+  typeLabel.textContent = title;
+
+  const time = document.createElement('span');
+  time.textContent = getTime();
+
+  const content = document.createElement('div');
+  content.className = 'log-message';
+  content.textContent = message;
+
+  meta.append(typeLabel, time);
+  entry.append(meta, content);
+  chatLog.appendChild(entry);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function updateStats() {
+  document.getElementById('sentCount').textContent = sentCount;
+  document.getElementById('errorCount').textContent = errorCount;
+}
+
+form.addEventListener('submit', async (event) => {
+  event.preventDefault();
+
+  const chatId = chatIdInput.value.trim();
+  const message = messageInput.value.trim();
+
+  if (!chatId || !message) {
+    addLog('error', 'ОШИБКА', 'Заполни оба поля.');
+    return;
+  }
+
+  sendBtn.disabled = true;
+  sendBtn.textContent = '⏳ Отправка...';
+  addLog('info', 'ОТПРАВКА', 'Попытка отправить сообщение в чат ' + chatId);
+
+  try {
+    const response = await fetch(API_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: message })
+    });
+
+    let result;
+    try {
+      result = await response.json();
+    } catch {
+      throw new Error('Сервер вернул некорректный ответ.');
+    }
+
+    if (!response.ok || result.ok !== true) {
+      throw new Error(result.description || result.error || 'Не удалось отправить сообщение.');
+    }
+
+    sentCount++;
+    updateStats();
+    addLog('success', 'УСПЕШНО ОТПРАВЛЕНО', 'Chat ID: ' + chatId + '\nСообщение: ' + message);
+    messageInput.value = '';
+  } catch (error) {
+    errorCount++;
+    updateStats();
+    addLog('error', 'ОШИБКА ОТПРАВКИ', error.message || 'Неизвестная ошибка сервера.');
+  } finally {
+    sendBtn.disabled = false;
+    sendBtn.textContent = '➤ Отправить сообщение';
+  }
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  chatLog.innerHTML = '<div class="empty" id="emptyMessage"><div style="font-size:30px;margin-bottom:12px">📭</div>История сообщений пока пуста.<br>Здесь появятся события бота.</div>';
+});
+
+addLog('info', 'СИСТЕМА', 'Панель управления успешно загружена.');
+</script>
+</body>
+</html>
