@@ -280,7 +280,20 @@ async function renderMessages(ms){
     }else if(m.media_type==="video"||m.media_type==="animation"||m.media_type==="video_note"||m.media_type==="video_sticker"){
      media=document.createElement("video");media.controls=true;media.playsInline=true;
     }else if(m.media_type==="audio"||m.media_type==="voice"){
-     media=document.createElement("audio");media.controls=true;
+     media=document.createElement("audio");
+     media.controls=true;
+     media.preload="metadata";
+     media.playsInline=true;
+     media.setAttribute("aria-label",m.media_type==="voice"?"Голосовое сообщение":"Аудиосообщение");
+     const source=document.createElement("source");
+     source.src=url;
+     source.type=m.media_type==="voice"?"audio/ogg; codecs=opus":(m.media_mime_type||"audio/mpeg");
+     media.append(source);
+     media.append(document.createTextNode("Ваш браузер не поддерживает воспроизведение аудио. "));
+     const fallback=document.createElement("a");
+     fallback.href=url;fallback.target="_blank";fallback.rel="noopener";fallback.textContent=tr("openFile");
+     media.append(fallback);
+     media.addEventListener("error",()=>{loading.textContent="Не удалось воспроизвести голосовое. Можно открыть файл отдельно: ";const link=document.createElement("a");link.href=url;link.target="_blank";link.rel="noopener";link.textContent=tr("openFile");link.style.color="var(--blue)";loading.append(link);});
     }else{
      const link=document.createElement("a");link.href=url;link.target="_blank";link.rel="noopener";link.textContent=m.media_file_name||tr("openFile");link.style.color="var(--blue)";b.insertBefore(link,b.firstChild);media=null;
     }
