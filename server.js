@@ -79,6 +79,38 @@ async function telegram(method, payload) {
   return data.result;
 }
 
+function extractMedia(message) {
+  if (!message || typeof message !== "object") return null;
+  if (Array.isArray(message.photo) && message.photo.length) {
+    const photo = message.photo[message.photo.length - 1];
+    return { fileId: photo.file_id, type: "photo", mime: "image/jpeg", name: null };
+  }
+  const fields = [
+    ["video", "video", "video/mp4"],
+    ["animation", "animation", "video/mp4"],
+    ["sticker", "sticker", message.sticker?.is_video ? "video/webm" : "image/webp"],
+    ["document", "document", message.document?.mime_type || "application/octet-stream"],
+    ["audio", "audio", message.audio?.mime_type || "audio/mpeg"],
+    ["voice", "voice", message.voice?.mime_type || "audio/ogg"],
+    ["video_note", "video_note", "video/mp4"]
+  ];
+  for (const [field, type, fallbackMime] of fields) {
+    const item = message[field];
+    if (item?.file_id) {
+      let mediaType = type;
+      if (type === "document" && item.mime_type?.startsWith("image/")) mediaType = "photo";
+      else if (type === "document" && item.mime_type?.startsWith("video/")) mediaType = "video";
+      return {
+        fileId: item.file_id,
+        type: mediaType,
+        mime: item.mime_type || fallbackMime,
+        name: item.file_name || null
+      };
+    }
+  }
+  return null;
+}
+
 async function initDatabase() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS chats (
@@ -99,8 +131,17 @@ async function initDatabase() {
       direction TEXT NOT NULL CHECK (direction IN ('incoming', 'outgoing')),
       text TEXT NOT NULL DEFAULT '',
       sender_name TEXT,
+      media_file_id TEXT,
+      media_type TEXT,
+      media_mime_type TEXT,
+      media_file_name TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    ALTER TABLE messages ADD COLUMN IF NOT EXISTS media_file_id TEXT;
+    ALTER TABLE messages ADD COLUMN IF NOT EXISTS media_type TEXT;
+    ALTER TABLE messages ADD COLUMN IF NOT EXISTS media_mime_type TEXT;
+    ALTER TABLE messages ADD COLUMN IF NOT EXISTS media_file_name TEXT;
 
     CREATE INDEX IF NOT EXISTS messages_chat_created_idx
       ON messages(chat_id, created_at DESC);
@@ -126,9 +167,15 @@ app.post("/telegram/webhook", async (req, res) => {
 
     const chat = message.chat;
     const from = message.from || {};
+    const media = extractMedia(message);
+    const mediaLabels = {
+      photo: "[Фото]", video: "[Видео]", animation: "[GIF]", sticker: "[Стикер]",
+      document: "[Файл]", audio: "[Аудио]", voice: "[Голосовое сообщение]",
+      video_note: "[Видеосообщение]"
+    };
     const textValue = typeof message.text === "string"
       ? message.text
-      : (message.caption || "[Сообщение без текста]");
+      : (message.caption || (media ? mediaLabels[media.type] || "[Медиа]" : "[Сообщение без текста]"));
 
     await pool.query(
       `INSERT INTO chats (chat_id, chat_type, title, username, first_name, last_name, last_message_at)
@@ -148,12 +195,14 @@ app.post("/telegram/webhook", async (req, res) => {
     );
 
     await pool.query(
-      `INSERT INTO messages (chat_id, telegram_message_id, direction, text, sender_name, created_at)
-       VALUES ($1, $2, 'incoming', $3, $4, to_timestamp($5))
+      `INSERT INTO messages
+       (chat_id, telegram_message_id, direction, text, sender_name, media_file_id, media_type, media_mime_type, media_file_name, created_at)
+       VALUES ($1, $2, 'incoming', $3, $4, $5, $6, $7, $8, to_timestamp($9))
        ON CONFLICT DO NOTHING`,
       [
         String(chat.id), message.message_id || null, String(textValue).slice(0, 4096),
         [from.first_name, from.last_name].filter(Boolean).join(" ") || from.username || null,
+        media?.fileId || null, media?.type || null, media?.mime || null, media?.name || null,
         Number(message.date) || Math.floor(Date.now() / 1000)
       ]
     );
@@ -192,7 +241,8 @@ app.get("/api/chats/:chatId/messages", requireAdmin, async (req, res) => {
   }
   try {
     const result = await pool.query(
-      `SELECT id, telegram_message_id, direction, text, sender_name, created_at
+      `SELECT id, telegram_message_id, direction, text, sender_name,
+              media_type, media_mime_type, media_file_name, created_at
        FROM messages WHERE chat_id = $1
        ORDER BY created_at ASC, id ASC LIMIT 500`,
       [chatId]
@@ -201,6 +251,35 @@ app.get("/api/chats/:chatId/messages", requireAdmin, async (req, res) => {
   } catch (error) {
     console.error("Messages query failed:", error.message);
     res.status(500).json({ ok: false, error: "Не удалось загрузить сообщения." });
+  }
+});
+
+app.get("/api/media/:messageId", requireAdmin, async (req, res) => {
+  const messageId = req.params.messageId;
+  if (!/^\d+$/.test(messageId)) return res.status(400).json({ ok: false, error: "Некорректный ID медиа." });
+  try {
+    const result = await pool.query(
+      "SELECT media_file_id, media_mime_type, media_file_name FROM messages WHERE id = $1 AND media_file_id IS NOT NULL",
+      [messageId]
+    );
+    if (!result.rows.length) return res.status(404).json({ ok: false, error: "Файл не найден." });
+    const media = result.rows[0];
+    const fileInfo = await telegram("getFile", { file_id: media.media_file_id });
+    if (!fileInfo.file_path) return res.status(502).json({ ok: false, error: "Telegram не вернул путь к файлу." });
+    const fileResponse = await fetch(`https://api.telegram.org/file/bot${BOT_TOKEN}/${fileInfo.file_path}`);
+    if (!fileResponse.ok || !fileResponse.body) {
+      return res.status(502).json({ ok: false, error: "Не удалось получить файл из Telegram." });
+    }
+    const { Readable } = require("node:stream");
+    res.setHeader("Content-Type", media.media_mime_type || fileResponse.headers.get("content-type") || "application/octet-stream");
+    res.setHeader("Cache-Control", "private, max-age=300");
+    res.setHeader("Content-Disposition", "inline");
+    if (fileResponse.headers.get("content-length")) res.setHeader("Content-Length", fileResponse.headers.get("content-length"));
+    Readable.fromWeb(fileResponse.body).pipe(res);
+  } catch (error) {
+    console.error("Media proxy failed:", error.message);
+    if (!res.headersSent) res.status(502).json({ ok: false, error: "Не удалось загрузить медиа из Telegram." });
+    else res.destroy(error);
   }
 });
 
@@ -260,9 +339,14 @@ app.post("/api/send-media", requireAdmin, upload.single("file"), async (req, res
       [String(chat.id), chat.type || "private", chat.title || null, chat.username || null, chat.first_name || null, chat.last_name || null]
     );
     await pool.query(
-      `INSERT INTO messages (chat_id, telegram_message_id, direction, text, sender_name, created_at)
-       VALUES ($1, $2, 'outgoing', $3, 'Вы', NOW()) ON CONFLICT DO NOTHING`,
-      [String(chat.id), sent.message_id, storedText]
+      `INSERT INTO messages
+       (chat_id, telegram_message_id, direction, text, sender_name, media_file_id, media_type, media_mime_type, media_file_name, created_at)
+       VALUES ($1, $2, 'outgoing', $3, 'Вы', $4, $5, $6, $7, NOW()) ON CONFLICT DO NOTHING`,
+      [
+        String(chat.id), sent.message_id, storedText,
+        extractMedia(sent)?.fileId || null, extractMedia(sent)?.type || null,
+        extractMedia(sent)?.mime || null, extractMedia(sent)?.name || file.originalname || null
+      ]
     );
     res.json({ ok: true, message_id: sent.message_id, media_type: method });
   } catch (error) {
