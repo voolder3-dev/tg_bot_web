@@ -1,5 +1,6 @@
 const crypto = require("node:crypto");
 const express = require("express");
+const multer = require("multer");
 const { Pool } = require("pg");
 
 const app = express();
@@ -27,6 +28,7 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json({ limit: "32kb" }));
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024, files: 1 } });
 
 const PORT = Number(process.env.PORT || 3000);
 const BOT_TOKEN = process.env.BOT_TOKEN;
@@ -214,6 +216,54 @@ app.delete("/api/chats/:chatId/messages", requireAdmin, async (req, res) => {
   } catch (error) {
     console.error("Clear chat failed:", error.message);
     res.status(500).json({ ok: false, error: "Не удалось очистить историю чата." });
+  }
+});
+
+app.post("/api/send-media", requireAdmin, upload.single("file"), async (req, res) => {
+  const chatId = String(req.body?.chat_id || "");
+  const caption = typeof req.body?.caption === "string" ? req.body.caption.trim() : "";
+  const file = req.file;
+  if (!/^-?\\d+$/.test(chatId) || !file) {
+    return res.status(400).json({ ok: false, error: "Выбери файл и проверь Chat ID." });
+  }
+  if (caption.length > 1024) {
+    return res.status(400).json({ ok: false, error: "Подпись к файлу не должна превышать 1024 символа." });
+  }
+
+  let method = "sendDocument";
+  let field = "document";
+  if (file.mimetype.startsWith("image/")) { method = "sendPhoto"; field = "photo"; }
+  else if (file.mimetype.startsWith("video/")) { method = "sendVideo"; field = "video"; }
+  else if (file.mimetype.startsWith("audio/")) { method = "sendAudio"; field = "audio"; }
+
+  try {
+    const form = new FormData();
+    form.append("chat_id", chatId);
+    if (caption) form.append("caption", caption);
+    form.append(field, new Blob([file.buffer], { type: file.mimetype }), file.originalname);
+    const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, { method: "POST", body: form });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.ok !== true) {
+      throw new Error(data.description || "Telegram не смог отправить файл.");
+    }
+    const sent = data.result;
+    const label = method === "sendPhoto" ? "[Фото]" : method === "sendVideo" ? "[Видео]" : method === "sendAudio" ? "[Аудио]" : "[Файл]";
+    const storedText = caption ? label + " " + caption : label + " " + file.originalname;
+    const chat = sent.chat;
+    await pool.query(
+      `INSERT INTO chats (chat_id, chat_type, title, username, first_name, last_name, last_message_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())
+       ON CONFLICT (chat_id) DO UPDATE SET last_message_at = NOW()`,
+      [String(chat.id), chat.type || "private", chat.title || null, chat.username || null, chat.first_name || null, chat.last_name || null]
+    );
+    await pool.query(
+      `INSERT INTO messages (chat_id, telegram_message_id, direction, text, sender_name, created_at)
+       VALUES ($1, $2, 'outgoing', $3, 'Вы', NOW()) ON CONFLICT DO NOTHING`,
+      [String(chat.id), sent.message_id, storedText]
+    );
+    res.json({ ok: true, message_id: sent.message_id, media_type: method });
+  } catch (error) {
+    res.status(502).json({ ok: false, error: error.message || "Не удалось отправить файл." });
   }
 });
 
