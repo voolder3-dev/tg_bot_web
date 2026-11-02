@@ -91,7 +91,7 @@ function extractMedia(message) {
     ["sticker", message.sticker?.is_video ? "video_sticker" : "sticker", message.sticker?.is_video ? "video/webm" : "image/webp"],
     ["document", "document", message.document?.mime_type || "application/octet-stream"],
     ["audio", "audio", message.audio?.mime_type || "audio/mpeg"],
-    ["voice", "voice", message.voice?.mime_type || "audio/ogg"],
+    ["voice", "voice", "audio/ogg; codecs=opus"],
     ["video_note", "video_note", "video/mp4"]
   ];
   for (const [field, type, fallbackMime] of fields) {
