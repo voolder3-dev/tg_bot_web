@@ -170,7 +170,7 @@ app.get("/api/chats", requireAdmin, async (_req, res) => {
     const result = await pool.query(
       `SELECT c.chat_id::text AS chat_id, c.chat_type, c.title, c.username,
               c.first_name, c.last_name, c.last_message_at,
-              m.text AS last_message
+              m.text AS last_message, m.id::text AS last_message_id, m.direction AS last_message_direction
        FROM chats c
        LEFT JOIN LATERAL (
          SELECT text FROM messages WHERE chat_id = c.chat_id
