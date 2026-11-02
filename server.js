@@ -6,6 +6,27 @@ const { Pool } = require("pg");
 const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
+
+// Разрешаем браузерные запросы только с явно указанных адресов панели.
+const allowedOrigins = (process.env.ALLOWED_ORIGIN || "")
+  .split(",")
+  .map(value => value.trim().replace(/\/$/, ""))
+  .filter(Boolean);
+
+app.use((req, res, next) => {
+  const origin = req.get("Origin");
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Admin-Key");
+  } else if (origin) {
+    return res.status(403).json({ ok: false, error: "Этот адрес сайта не разрешён сервером. Проверь ALLOWED_ORIGIN." });
+  }
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+});
+
 app.use(express.json({ limit: "32kb" }));
 
 const PORT = Number(process.env.PORT || 3000);
@@ -13,11 +34,9 @@ const BOT_TOKEN = process.env.BOT_TOKEN;
 const DATABASE_URL = process.env.DATABASE_URL;
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
-const COOKIE_NAME = "tg_dashboard_session";
-const SESSION_SECONDS = 604800;
 
-if (!BOT_TOKEN || !DATABASE_URL || !ADMIN_API_KEY || !WEBHOOK_SECRET) {
-  console.error("Missing required environment variables: BOT_TOKEN, DATABASE_URL, ADMIN_API_KEY, WEBHOOK_SECRET");
+if (!BOT_TOKEN || !DATABASE_URL || !ADMIN_API_KEY || !WEBHOOK_SECRET || allowedOrigins.length === 0) {
+  console.error("Missing required environment variables: BOT_TOKEN, DATABASE_URL, ADMIN_API_KEY, WEBHOOK_SECRET, ALLOWED_ORIGIN");
   process.exit(1);
 }
 
@@ -36,28 +55,11 @@ function safeEqual(a, b) {
   return left.length === right.length && crypto.timingSafeEqual(left, right);
 }
 
-function signSession(expiresAt) { return crypto.createHmac("sha256", ADMIN_API_KEY).update(String(expiresAt)).digest("base64url"); }
-function validSession(req) {
-  const raw = (req.headers.cookie || "").split(";").map(v => v.trim()).find(v => v.startsWith(COOKIE_NAME + "="));
-  if (!raw) return false;
-  const parts = decodeURIComponent(raw.slice(COOKIE_NAME.length + 1)).split(".");
-  if (parts.length !== 2) return false;
-  const expiresAt = Number(parts[0]);
-  if (!Number.isSafeInteger(expiresAt) || expiresAt <= Math.floor(Date.now() / 1000)) return false;
-  return safeEqual(parts[1], signSession(expiresAt));
-}
-function setSessionCookie(res) {
-  const expiresAt = Math.floor(Date.now() / 1000) + SESSION_SECONDS;
-  const token = expiresAt + "." + signSession(expiresAt);
-  const secure = "; Secure";
-  res.setHeader("Set-Cookie", COOKIE_NAME + "=" + encodeURIComponent(token) + "; HttpOnly; SameSite=Strict; Path=/; Max-Age=" + SESSION_SECONDS + secure);
-}
-function clearSessionCookie(res) {
-  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
-  res.setHeader("Set-Cookie", COOKIE_NAME + "=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0" + secure);
-}
 function requireAdmin(req, res, next) {
-  if (!validSession(req)) return res.status(401).json({ ok: false, error: "Сессия закончилась. Войди снова." });
+  const supplied = req.get("X-Admin-Key") || "";
+  if (!safeEqual(supplied, ADMIN_API_KEY)) {
+    return res.status(401).json({ ok: false, error: "Неверный ключ доступа. Проверь ADMIN_API_KEY на своём Render." });
+  }
   next();
 }
 
@@ -109,14 +111,7 @@ async function initDatabase() {
 
 app.get("/health", (_req, res) => res.json({ ok: true, service: "telegram-dashboard-api" }));
 app.get("/", (_req, res) => res.sendFile(path.join(__dirname, "index.html")));
-app.post("/api/login", (req, res) => {
-  const supplied = typeof req.body?.key === "string" ? req.body.key : "";
-  if (!safeEqual(supplied, ADMIN_API_KEY)) return res.status(401).json({ ok: false, error: "Неверный ключ доступа." });
-  setSessionCookie(res);
-  res.json({ ok: true });
-});
 app.get("/api/session", requireAdmin, (_req, res) => res.json({ ok: true }));
-app.post("/api/logout", (_req, res) => { clearSessionCookie(res); res.json({ ok: true }); });
 
 app.post("/telegram/webhook", async (req, res) => {
   if (!safeEqual(req.get("X-Telegram-Bot-Api-Secret-Token") || "", WEBHOOK_SECRET)) {
