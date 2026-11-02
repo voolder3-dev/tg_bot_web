@@ -1,50 +1,27 @@
 # Telegram Bot Dashboard
 
-Панель переписки с Telegram-ботом: список чатов, история входящих/исходящих сообщений и отправка ответов.
+Веб-панель для переписки с пользователями Telegram-бота.
 
 ## Архитектура
 
-- Frontend: `index.html` (можно открыть через GitHub Pages).
-- Backend: Node.js + Express (`server.js`), размещается на Render.
-- База данных: PostgreSQL, например Neon.
-- Токен Telegram хранится только в переменных окружения Render. Не добавляйте токены и пароли в GitHub.
+- `index.html` — интерфейс, который Render отдаёт с того же домена, что и API.
+- `server.js` — Node.js + Express: принимает Telegram webhook, защищает панель и отправляет ответы.
+- Neon PostgreSQL — хранит чаты и историю сообщений.
 
 ## Render
 
-Создайте Web Service из этого репозитория:
-- Runtime: Node
-- Build Command: `npm install`
-- Start Command: `npm start`
-- Instance: Free (для тестирования; сервис может засыпать после простоя)
+Web Service из этого репозитория: Node, Build Command `npm install`, Start Command `npm start`, Free instance (может засыпать после простоя).
 
-Добавьте Environment Variables:
-- `BOT_TOKEN` — токен бота от BotFather.
-- `DATABASE_URL` — строка подключения PostgreSQL из Neon.
-- `ADMIN_API_KEY` — длинный случайный секрет для доступа к панели.
-- `WEBHOOK_SECRET` — отдельный случайный секрет для проверки Telegram webhook.
-- `ALLOWED_ORIGIN` — адрес GitHub Pages, например `https://voolder3-dev.github.io`. Для временной отладки допустимо `*`, но лучше ограничить домен.
+Переменные окружения: `BOT_TOKEN`, `DATABASE_URL`, `ADMIN_API_KEY`, `WEBHOOK_SECRET`. Не публикуй реальные значения в GitHub.
 
-## База данных
+## Вход
 
-Создайте PostgreSQL project в Neon и скопируйте connection string в `DATABASE_URL`. Таблицы создаются автоматически при старте сервера.
+Открой HTTPS-адрес Render и введи `ADMIN_API_KEY`. Сервер выдаёт подписанную cookie с флагами HttpOnly, SameSite=Strict и Secure в production. Ключ не сохраняется в localStorage/sessionStorage и не отправляется при обычных запросах. Срок сессии — 7 дней.
 
-## Панель
+Интерфейс и API работают на одном домене, поэтому GitHub Pages и CORS для панели больше не нужны. GitHub остаётся хранилищем исходного кода.
 
-Откройте GitHub Pages сайта, укажите:
-1. HTTPS-адрес Render Web Service.
-2. Значение `ADMIN_API_KEY`.
+## Telegram
 
-Ключ доступа хранится только в sessionStorage текущей вкладки и не записывается в репозиторий.
+После входа панель просит сервер зарегистрировать webhook на публичном HTTPS-адресе Render. Чаты появляются после того, как пользователь написал боту или отправил `/start`.
 
-## Подключение Telegram webhook
-
-После успешного деплоя и подключения панели можно зарегистрировать webhook запросом:
-`POST /api/webhook/register` с заголовком `X-Admin-Key: <ADMIN_API_KEY>` и JSON-телом `{"public_url":"https://YOUR-SERVICE.onrender.com"}`.
-
-Панель будет показывать только чаты, в которых пользователь действительно написал боту. Telegram не сообщает боту о простом открытии профиля.
-
-## Безопасность
-
-- Никогда не публикуйте `BOT_TOKEN`, `DATABASE_URL`, `ADMIN_API_KEY` или `WEBHOOK_SECRET`.
-- Если токен бота когда-либо раскрывался, отзовите его через BotFather и создайте новый.
-- Входящие сообщения сохраняются в PostgreSQL. Не используйте панель для хранения чувствительных данных.
+Таблицы в Neon создаются автоматически. Существующая база не удаляется.
