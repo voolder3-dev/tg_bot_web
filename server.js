@@ -204,7 +204,7 @@ app.get("/api/chats/:chatId/messages", requireAdmin, async (req, res) => {
 
 app.delete("/api/chats/:chatId/messages", requireAdmin, async (req, res) => {
   const chatId = req.params.chatId;
-  if (!/^-?\\d+$/.test(chatId)) {
+  if (!/^-?\d+$/.test(chatId)) {
     return res.status(400).json({ ok: false, error: "Некорректный Chat ID." });
   }
   try {
