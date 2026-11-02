@@ -173,7 +173,7 @@ app.get("/api/chats", requireAdmin, async (_req, res) => {
               m.text AS last_message, m.id::text AS last_message_id, m.direction AS last_message_direction
        FROM chats c
        LEFT JOIN LATERAL (
-         SELECT text FROM messages WHERE chat_id = c.chat_id
+         SELECT text, id, direction FROM messages WHERE chat_id = c.chat_id
          ORDER BY created_at DESC, id DESC LIMIT 1
        ) m ON TRUE
        ORDER BY c.last_message_at DESC NULLS LAST`
