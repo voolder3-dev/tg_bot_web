@@ -1,6 +1,5 @@
 const crypto = require("node:crypto");
 const express = require("express");
-const path = require("node:path");
 const { Pool } = require("pg");
 
 const app = express();
@@ -110,7 +109,7 @@ async function initDatabase() {
 }
 
 app.get("/health", (_req, res) => res.json({ ok: true, service: "telegram-dashboard-api" }));
-app.get("/", (_req, res) => res.sendFile(path.join(__dirname, "index.html")));
+app.get("/", (_req, res) => res.redirect("https://voolder3-dev.github.io/tg_bot_web/"));
 app.get("/api/session", requireAdmin, (_req, res) => res.json({ ok: true }));
 
 app.post("/telegram/webhook", async (req, res) => {
