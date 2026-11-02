@@ -2,192 +2,228 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#090b14">
-<title>Telegram Bot Dashboard</title>
+<title>Telegram Dashboard</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-:root{--bg:#090b14;--panel:#111522;--border:rgba(255,255,255,.08);--text:#edf0ff;--muted:#858da5;--purple:#8b5cf6;--blue:#38bdf8;--green:#22c55e;--red:#fb5364}
-*{box-sizing:border-box;margin:0;padding:0}
-body{min-height:100vh;background:radial-gradient(ellipse at 15% 0%,rgba(139,92,246,.13),transparent 40%),radial-gradient(ellipse at 90% 90%,rgba(56,189,248,.08),transparent 40%),var(--bg);color:var(--text);font-family:Inter,sans-serif;padding:25px}
-button,input,textarea{font:inherit}
-.container{max-width:1150px;margin:auto}
-.header{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:35px}
-.brand{display:flex;align-items:center;gap:13px}
-.logo{width:48px;height:48px;border-radius:15px;display:grid;place-items:center;font-size:25px;background:linear-gradient(135deg,#8b5cf6,#38bdf8);box-shadow:0 5px 25px rgba(139,92,246,.3)}
-.brand h1{font-size:19px;font-weight:800}.brand p{font-size:12px;color:var(--muted);margin-top:4px}
-.status{display:flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--border);border-radius:30px;background:rgba(255,255,255,.03);font-size:12px;color:var(--muted)}
-.dot{width:8px;height:8px;background:var(--green);border-radius:50%;box-shadow:0 0 12px var(--green)}
-.welcome{margin-bottom:25px}.welcome h2{font-size:clamp(23px,4vw,32px);font-weight:800;letter-spacing:-1px}.welcome p{color:var(--muted);margin-top:9px;font-size:14px}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:22px}
-.card{background:rgba(17,21,34,.88);border:1px solid var(--border);border-radius:18px;padding:21px;transition:.25s ease}
-.card:hover{border-color:rgba(139,92,246,.4);transform:translateY(-3px)}
-.stat-label{color:var(--muted);font-size:12px}.stat-value{font-size:27px;font-weight:800;margin-top:12px}.stat-icon{font-size:20px;float:right}
-.dashboard{display:grid;grid-template-columns:1fr 1.2fr;gap:20px}
-.panel{background:rgba(17,21,34,.92);border:1px solid var(--border);border-radius:20px;padding:24px;min-width:0}
-.panel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:23px;gap:10px}.panel-header h3{font-size:16px;font-weight:700}.panel-header span{font-size:12px;color:var(--muted)}
-.field{margin-bottom:20px}.field label{display:block;font-size:12px;font-weight:600;margin-bottom:10px;color:#c4c9db}
-.input,.textarea{width:100%;background:#0c101c;border:1px solid rgba(255,255,255,.09);color:var(--text);border-radius:12px;padding:14px;outline:none;transition:.25s}
-.input:focus,.textarea:focus{border-color:var(--purple);box-shadow:0 0 0 3px rgba(139,92,246,.12)}
-.input::placeholder,.textarea::placeholder{color:#596177}.textarea{min-height:155px;resize:vertical;line-height:1.6}
-.hint{color:var(--muted);font-size:11px;margin-top:8px;line-height:1.5}
-.send-btn{width:100%;border:none;border-radius:12px;padding:15px;color:white;font-weight:700;font-size:14px;cursor:pointer;background:linear-gradient(110deg,#7c3aed,#4f8dfd);box-shadow:0 5px 22px rgba(124,58,237,.23);transition:.25s}
-.send-btn:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(124,58,237,.4);filter:brightness(1.12)}
-.send-btn:active{transform:scale(.98)}.send-btn:disabled{opacity:.55;cursor:wait;transform:none}
-.clear-btn{border:1px solid var(--border);color:var(--muted);background:rgba(255,255,255,.03);padding:8px 12px;border-radius:9px;font-size:11px;cursor:pointer;transition:.2s}
-.clear-btn:hover{color:white;border-color:var(--purple)}
-.log{height:400px;overflow-y:auto;padding-right:5px;display:flex;flex-direction:column;gap:11px}
-.log::-webkit-scrollbar{width:5px}.log::-webkit-scrollbar-thumb{background:#343b50;border-radius:10px}
-.log-entry{padding:13px;border-radius:12px;background:#0c101c;border:1px solid var(--border);animation:appear .3s ease;overflow-wrap:anywhere}
-@keyframes appear{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.log-meta{display:flex;justify-content:space-between;gap:10px;margin-bottom:8px;font-size:10px;color:var(--muted)}
-.log-message{font-size:12px;line-height:1.6;white-space:pre-wrap}
-.success{border-left:3px solid var(--green)}.success .log-type{color:var(--green)}
-.error{border-left:3px solid var(--red)}.error .log-type{color:var(--red)}
-.info{border-left:3px solid var(--blue)}.info .log-type{color:var(--blue)}
-.empty{text-align:center;color:#697188;margin:auto;font-size:13px;padding:25px 5px}
-.footer{text-align:center;color:#515970;font-size:11px;margin-top:25px}
-@media(max-width:750px){body{padding:16px}.stats{grid-template-columns:1fr;gap:10px}.card{padding:16px}.stat-value{font-size:23px}.dashboard{grid-template-columns:1fr}.panel{padding:19px}.log{height:320px}.header{margin-bottom:28px}}
-@media(max-width:380px){.brand h1{font-size:15px}.status{font-size:10px;padding:8px}}
+:root{color-scheme:dark;--bg:#090b14;--panel:#111522;--border:rgba(255,255,255,.09);--text:#edf0ff;--muted:#8992aa;--purple:#8b5cf6;--blue:#38bdf8;--green:#22c55e;--red:#fb5364}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 10% 0%,rgba(139,92,246,.13),transparent 38%),radial-gradient(ellipse at 95% 100%,rgba(56,189,248,.08),transparent 40%),var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;padding:24px}
+button,input,textarea{font:inherit}.app{max-width:1350px;margin:auto}.top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:24px}.brand{display:flex;align-items:center;gap:13px}.logo{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;font-size:24px;background:linear-gradient(135deg,#8b5cf6,#38bdf8);box-shadow:0 5px 24px #8b5cf644}.brand h1{font-size:18px;margin:0;font-weight:800}.brand p{font-size:12px;color:var(--muted);margin:4px 0 0}.status{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;padding:10px 14px;border:1px solid var(--border);border-radius:30px;background:#ffffff08}.dot{width:8px;height:8px;border-radius:50%;background:#647084}.dot.online{background:var(--green);box-shadow:0 0 12px var(--green)}
+h2{font-size:clamp(22px,4vw,30px);margin:0 0 7px;letter-spacing:-.8px}.sub{font-size:13px;color:var(--muted);margin:0 0 20px}
+.setup{display:grid;grid-template-columns:minmax(180px,1fr) minmax(180px,1fr) auto;gap:10px;align-items:end;padding:16px;background:#111522dd;border:1px solid var(--border);border-radius:17px;margin-bottom:16px}.field label{display:block;font-size:11px;color:#b9c1d5;margin:0 0 7px;font-weight:600}.input,.textarea{width:100%;border:1px solid var(--border);border-radius:11px;background:#0b0f1b;color:var(--text);padding:12px 13px;outline:none}.input:focus,.textarea:focus{border-color:var(--purple);box-shadow:0 0 0 3px #8b5cf622}.btn{border:0;border-radius:11px;padding:12px 16px;background:linear-gradient(110deg,#7c3aed,#4f8dfd);color:white;font-weight:700;cursor:pointer;transition:.2s;white-space:nowrap}.btn:hover{filter:brightness(1.12);transform:translateY(-1px)}.btn:disabled{opacity:.55;cursor:wait;transform:none}.btn.secondary{background:#ffffff0a;border:1px solid var(--border);color:#cbd3e8}
+.layout{display:grid;grid-template-columns:340px minmax(0,1fr);gap:16px;min-height:600px}.panel{min-width:0;background:#111522eF;border:1px solid var(--border);border-radius:18px;overflow:hidden}.panel-head{height:62px;padding:0 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}.panel-head h3{font-size:14px;margin:0}.muted{color:var(--muted);font-size:11px}
+.search{padding:12px 14px;border-bottom:1px solid var(--border)}.search input{width:100%;border:1px solid var(--border);background:#0b0f1b;border-radius:10px;padding:10px 12px;color:var(--text);outline:none}
+.chat-list{max-height:560px;overflow:auto}.chat{display:flex;align-items:center;gap:12px;padding:14px;border-bottom:1px solid #ffffff09;cursor:pointer;transition:.15s}.chat:hover{background:#ffffff08}.chat.active{background:#8b5cf61b;border-left:3px solid var(--purple);padding-left:11px}.avatar{width:40px;height:40px;flex:0 0 40px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#5534a0,#187ba4);font-weight:700}.chat-info{min-width:0;flex:1}.chat-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chat-preview{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:5px}.chat-id{font-size:10px;color:#68728b;margin-top:4px}.empty{padding:35px 20px;text-align:center;color:var(--muted);font-size:12px;line-height:1.7}
+.conversation{display:flex;flex-direction:column;min-height:600px}.conversation-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px}.person{font-size:14px;font-weight:700}.messages{padding:18px;flex:1;min-height:350px;max-height:500px;overflow:auto;display:flex;flex-direction:column;gap:10px;background:radial-gradient(ellipse at center,#8b5cf608,transparent 70%)}.bubble{max-width:min(78%,560px);padding:11px 13px;border-radius:14px;background:#1a2031;border:1px solid var(--border);font-size:13px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;align-self:flex-start}.bubble.outgoing{align-self:flex-end;background:#49318b88;border-color:#8b5cf655}.bubble time{display:block;text-align:right;color:#aab2c7;font-size:9px;margin-top:6px}.composer{padding:14px;border-top:1px solid var(--border);display:flex;gap:10px}.composer textarea{min-height:46px;max-height:130px;resize:vertical;flex:1}.hint{font-size:10px;color:var(--muted);padding:0 15px 12px}.toast{position:fixed;right:20px;bottom:20px;max-width:min(420px,calc(100vw - 40px));padding:13px 16px;border-radius:12px;background:#1b2335;border:1px solid var(--border);font-size:12px;box-shadow:0 10px 35px #0008;display:none}.toast.show{display:block}.footer{text-align:center;color:#59627a;font-size:10px;margin:18px 0}
+@media(max-width:800px){body{padding:14px}.setup{grid-template-columns:1fr}.layout{grid-template-columns:1fr}.chat-list{max-height:270px}.conversation{min-height:470px}.messages{min-height:280px;max-height:400px}.top{align-items:flex-start}.status{font-size:10px}}
 </style>
 </head>
 <body>
-<div class="container">
-<header class="header">
-  <div class="brand"><div class="logo">✈</div><div><h1>Telegram Dashboard</h1><p>Bot Management System</p></div></div>
-  <div class="status"><span class="dot"></span><span>Панель активна</span></div>
+<div class="app">
+<header class="top">
+  <div class="brand"><div class="logo">✈</div><div><h1>Telegram Dashboard</h1><p>Панель управления ботом</p></div></div>
+  <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">Не подключено</span></div>
 </header>
-<section class="welcome"><h2>Панель управления</h2><p>Управляй отправкой сообщений своему Telegram-боту.</p></section>
-<section class="stats">
-  <div class="card"><span class="stat-icon">📨</span><div class="stat-label">Отправлено сообщений</div><div class="stat-value" id="sentCount">0</div></div>
-  <div class="card"><span class="stat-icon">⚠️</span><div class="stat-label">Ошибок отправки</div><div class="stat-value" id="errorCount">0</div></div>
-  <div class="card"><span class="stat-icon">⚡</span><div class="stat-label">Статус интерфейса</div><div class="stat-value" style="font-size:19px;color:#22c55e">ONLINE</div></div>
+<h2>Сообщения и чаты</h2>
+<p class="sub">Пользователи появятся здесь после того, как напишут боту или нажмут Start и отправят сообщение.</p>
+
+<section class="setup">
+  <div class="field"><label for="apiUrl">АДРЕС СЕРВЕРА RENDER</label><input class="input" id="apiUrl" type="url" placeholder="https://your-service.onrender.com"></div>
+  <div class="field"><label for="adminKey">КЛЮЧ ДОСТУПА ПАНЕЛИ</label><input class="input" id="adminKey" type="password" placeholder="Вставь ADMIN_API_KEY из Render"></div>
+  <button class="btn" id="connectBtn">Подключиться</button>
 </section>
-<main class="dashboard">
-<section class="panel">
-  <div class="panel-header"><h3>✉ Отправка сообщения</h3><span>Telegram API</span></div>
-  <form id="messageForm">
-    <div class="field"><label for="chatId">TELEGRAM CHAT ID</label><input class="input" id="chatId" type="text" placeholder="Например: 123456789" required><div class="hint">Укажи ID пользователя или чата, которому нужно отправить сообщение.</div></div>
-    <div class="field"><label for="message">ТЕКСТ СООБЩЕНИЯ</label><textarea class="textarea" id="message" placeholder="Напиши сообщение..." maxlength="4096" required></textarea><div class="hint">Максимальная длина: 4096 символов.</div></div>
-    <button class="send-btn" id="sendBtn" type="submit">➤ Отправить сообщение</button>
-  </form>
-</section>
-<section class="panel">
-  <div class="panel-header"><h3>◉ История событий</h3><button class="clear-btn" id="clearBtn" type="button">Очистить лог</button></div>
-  <div class="log" id="chatLog" aria-live="polite"><div class="empty" id="emptyMessage"><div style="font-size:30px;margin-bottom:12px">📭</div>История сообщений пока пуста.<br>Здесь появятся события бота.</div></div>
-</section>
+
+<main class="layout">
+  <section class="panel">
+    <div class="panel-head"><h3>💬 Список чатов</h3><span class="muted" id="chatCount">0 чатов</span></div>
+    <div class="search"><input id="searchInput" type="search" placeholder="Поиск по имени или ID…"></div>
+    <div class="chat-list" id="chatList"><div class="empty">Сначала подключи сервер.<br>Затем здесь появятся чаты.</div></div>
+  </section>
+  <section class="panel conversation">
+    <div class="conversation-head"><div><div class="person" id="activeName">Выбери чат</div><div class="muted" id="activeId">Переписка появится здесь</div></div><button class="btn secondary" id="refreshBtn" type="button">Обновить</button></div>
+    <div class="messages" id="messages"><div class="empty">📭<br>Пока чат не выбран.</div></div>
+    <form class="composer" id="sendForm"><textarea class="textarea" id="messageText" maxlength="4096" placeholder="Напиши сообщение…" disabled required></textarea><button class="btn" id="sendBtn" disabled>Отправить</button></form>
+    <div class="hint">Сообщения отправляются от имени твоего Telegram-бота. Пользователь должен предварительно начать диалог с ботом.</div>
+  </section>
 </main>
-<footer class="footer">Telegram Bot Dashboard · Management Interface</footer>
+<footer class="footer">Telegram Bot Dashboard · Не публикуй ключ доступа и токен бота</footer>
 </div>
+<div class="toast" id="toast" role="status"></div>
 <script>
-/*
- * SECURITY:
- * Never put the Telegram bot token in this frontend file.
- * Store it as a server-side environment variable.
- * The backend endpoint /api/send must call:
- * https://api.telegram.org/bot<TOKEN>/sendMessage
- */
-const API_ENDPOINT = '/api/send';
+const $ = (id) => document.getElementById(id);
+let apiBase = "";
+let adminKey = "";
+let chats = [];
+let activeChatId = null;
+let refreshTimer = null;
 
-let sentCount = 0;
-let errorCount = 0;
-
-const form = document.getElementById('messageForm');
-const chatIdInput = document.getElementById('chatId');
-const messageInput = document.getElementById('message');
-const sendBtn = document.getElementById('sendBtn');
-const chatLog = document.getElementById('chatLog');
-
-function getTime() {
-  return new Date().toLocaleTimeString('ru-RU', {
-    hour: '2-digit', minute: '2-digit', second: '2-digit'
+function toast(message) {
+  const el = $("toast");
+  el.textContent = message;
+  el.classList.add("show");
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => el.classList.remove("show"), 4000);
+}
+function api(path, options = {}) {
+  return fetch(apiBase + path, {
+    ...options,
+    headers: { "Content-Type": "application/json", "X-Admin-Key": adminKey, ...(options.headers || {}) }
+  }).then(async response => {
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.ok !== true) throw new Error(data.error || data.description || "Ошибка сервера");
+    return data;
   });
 }
-
-function addLog(type, title, message) {
-  const empty = document.getElementById('emptyMessage');
-  if (empty) empty.remove();
-
-  const entry = document.createElement('div');
-  entry.className = 'log-entry ' + type;
-
-  const meta = document.createElement('div');
-  meta.className = 'log-meta';
-
-  const typeLabel = document.createElement('span');
-  typeLabel.className = 'log-type';
-  typeLabel.textContent = title;
-
-  const time = document.createElement('span');
-  time.textContent = getTime();
-
-  const content = document.createElement('div');
-  content.className = 'log-message';
-  content.textContent = message;
-
-  meta.append(typeLabel, time);
-  entry.append(meta, content);
-  chatLog.appendChild(entry);
-  chatLog.scrollTop = chatLog.scrollHeight;
+function displayName(chat) {
+  return chat.title || [chat.first_name, chat.last_name].filter(Boolean).join(" ") || (chat.username ? "@" + chat.username : "Пользователь");
 }
-
-function updateStats() {
-  document.getElementById('sentCount').textContent = sentCount;
-  document.getElementById('errorCount').textContent = errorCount;
-}
-
-form.addEventListener('submit', async (event) => {
-  event.preventDefault();
-
-  const chatId = chatIdInput.value.trim();
-  const message = messageInput.value.trim();
-
-  if (!chatId || !message) {
-    addLog('error', 'ОШИБКА', 'Заполни оба поля.');
+function renderChats() {
+  const query = $("searchInput").value.trim().toLowerCase();
+  const visible = chats.filter(c => [displayName(c), c.username, c.chat_id, c.last_message].join(" ").toLowerCase().includes(query));
+  $("chatCount").textContent = chats.length + (chats.length === 1 ? " чат" : " чатов");
+  const list = $("chatList");
+  list.replaceChildren();
+  if (!visible.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = chats.length ? "Ничего не найдено." : "Пока нет чатов. Напиши своему боту в Telegram и отправь /start.";
+    list.append(empty);
     return;
   }
-
-  sendBtn.disabled = true;
-  sendBtn.textContent = '⏳ Отправка...';
-  addLog('info', 'ОТПРАВКА', 'Попытка отправить сообщение в чат ' + chatId);
-
+  visible.forEach(chat => {
+    const item = document.createElement("div");
+    item.className = "chat" + (String(chat.chat_id) === String(activeChatId) ? " active" : "");
+    const avatar = document.createElement("div");
+    avatar.className = "avatar";
+    avatar.textContent = displayName(chat).trim().slice(0, 1).toUpperCase() || "T";
+    const info = document.createElement("div");
+    info.className = "chat-info";
+    const name = document.createElement("div");
+    name.className = "chat-name";
+    name.textContent = displayName(chat);
+    const preview = document.createElement("div");
+    preview.className = "chat-preview";
+    preview.textContent = chat.last_message || "Нет сообщений";
+    const id = document.createElement("div");
+    id.className = "chat-id";
+    id.textContent = "ID: " + chat.chat_id;
+    info.append(name, preview, id);
+    item.append(avatar, info);
+    item.addEventListener("click", () => selectChat(chat.chat_id));
+    list.append(item);
+  });
+}
+function renderMessages(messages) {
+  const box = $("messages");
+  box.replaceChildren();
+  if (!messages.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "В этом чате пока нет сохранённых сообщений.";
+    box.append(empty);
+    return;
+  }
+  messages.forEach(message => {
+    const bubble = document.createElement("div");
+    bubble.className = "bubble " + (message.direction === "outgoing" ? "outgoing" : "incoming");
+    const body = document.createElement("div");
+    body.textContent = message.text;
+    const time = document.createElement("time");
+    time.textContent = new Date(message.created_at).toLocaleString("ru-RU", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
+    bubble.append(body, time);
+    box.append(bubble);
+  });
+  box.scrollTop = box.scrollHeight;
+}
+async function loadChats() {
+  const data = await api("/api/chats");
+  chats = data.chats || [];
+  renderChats();
+  if (activeChatId && !chats.some(c => String(c.chat_id) === String(activeChatId))) {
+    activeChatId = null;
+    $("activeName").textContent = "Выбери чат";
+    $("activeId").textContent = "Переписка появится здесь";
+    $("messageText").disabled = true;
+    $("sendBtn").disabled = true;
+    renderMessages([]);
+  }
+}
+async function selectChat(chatId) {
+  activeChatId = String(chatId);
+  const chat = chats.find(c => String(c.chat_id) === activeChatId);
+  $("activeName").textContent = chat ? displayName(chat) : "Чат";
+  $("activeId").textContent = "Telegram Chat ID: " + activeChatId;
+  $("messageText").disabled = false;
+  $("sendBtn").disabled = false;
+  renderChats();
+  await loadMessages();
+}
+async function loadMessages() {
+  if (!activeChatId) return;
+  const data = await api("/api/chats/" + encodeURIComponent(activeChatId) + "/messages");
+  renderMessages(data.messages || []);
+}
+async function refreshAll() {
+  if (!apiBase || !adminKey) return;
   try {
-    const response = await fetch(API_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text: message })
-    });
-
-    let result;
-    try {
-      result = await response.json();
-    } catch {
-      throw new Error('Сервер вернул некорректный ответ.');
-    }
-
-    if (!response.ok || result.ok !== true) {
-      throw new Error(result.description || result.error || 'Не удалось отправить сообщение.');
-    }
-
-    sentCount++;
-    updateStats();
-    addLog('success', 'УСПЕШНО ОТПРАВЛЕНО', 'Chat ID: ' + chatId + '\nСообщение: ' + message);
-    messageInput.value = '';
+    await loadChats();
+    await loadMessages();
   } catch (error) {
-    errorCount++;
-    updateStats();
-    addLog('error', 'ОШИБКА ОТПРАВКИ', error.message || 'Неизвестная ошибка сервера.');
+    $("statusText").textContent = "Ошибка соединения";
+    $("statusDot").classList.remove("online");
+    toast(error.message);
+  }
+}
+$("connectBtn").addEventListener("click", async () => {
+  const url = $("apiUrl").value.trim().replace(/\/$/, "");
+  const key = $("adminKey").value.trim();
+  if (!/^https:\/\//i.test(url) || !key) return toast("Введи HTTPS-адрес Render и ключ доступа.");
+  apiBase = url;
+  adminKey = key;
+  $("connectBtn").disabled = true;
+  try {
+    await loadChats();
+    $("statusText").textContent = "Сервер подключён";
+    $("statusDot").classList.add("online");
+    sessionStorage.setItem("tg_api_url", apiBase);
+    sessionStorage.setItem("tg_admin_key", adminKey);
+    if (refreshTimer) clearInterval(refreshTimer);
+    refreshTimer = setInterval(refreshAll, 10000);
+    toast("Подключение успешно.");
+  } catch (error) {
+    apiBase = "";
+    adminKey = "";
+    $("statusText").textContent = "Не подключено";
+    $("statusDot").classList.remove("online");
+    toast(error.message);
   } finally {
-    sendBtn.disabled = false;
-    sendBtn.textContent = '➤ Отправить сообщение';
+    $("connectBtn").disabled = false;
   }
 });
-
-document.getElementById('clearBtn').addEventListener('click', () => {
-  chatLog.innerHTML = '<div class="empty" id="emptyMessage"><div style="font-size:30px;margin-bottom:12px">📭</div>История сообщений пока пуста.<br>Здесь появятся события бота.</div>';
+$("searchInput").addEventListener("input", renderChats);
+$("refreshBtn").addEventListener("click", refreshAll);
+$("sendForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!activeChatId) return;
+  const text = $("messageText").value.trim();
+  if (!text) return;
+  $("sendBtn").disabled = true;
+  try {
+    await api("/api/send", { method:"POST", body:JSON.stringify({ chat_id:activeChatId, text }) });
+    $("messageText").value = "";
+    await refreshAll();
+    toast("Сообщение отправлено.");
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    $("sendBtn").disabled = false;
+  }
 });
-
-addLog('info', 'СИСТЕМА', 'Панель управления успешно загружена.');
+const savedUrl = sessionStorage.getItem("tg_api_url");
+const savedKey = sessionStorage.getItem("tg_admin_key");
+if (savedUrl) $("apiUrl").value = savedUrl;
+if (savedKey) $("adminKey").value = savedKey;
 </script>
 </body>
 </html>
