@@ -288,7 +288,32 @@ async function loadChats({detect=false}={}){const d=await api("/api/chats");chat
 async function loadMessages(){if(!activeChatId)return;const d=await api("/api/chats/"+encodeURIComponent(activeChatId)+"/messages");renderMessages(d.messages||[]);}
 async function selectChat(id){activeChatId=String(id);const c=chats.find(x=>String(x.chat_id)===activeChatId);$("activeName").textContent=c?displayName(c):tr("chooseChatName");$("activeId").textContent=tr("chatId")+activeChatId;$("messageText").disabled=false;$("sendBtn").disabled=false;$("attachBtn").disabled=false;$("clearChatBtn").disabled=false;renderChats();await loadMessages();}
 async function refreshAll(){if(busy||$("dashboard").hidden)return;busy=true;try{await loadChats({detect:true});await loadMessages();}catch(e){if(!e.message.includes("Войди"))toast(e.message);}finally{busy=false;}}
-$("loginForm").addEventListener("submit",async e=>{e.preventDefault();$("loginBtn").disabled=true;$("loginError").textContent="";try{const server=cleanServerUrl($("serverUrl").value);const key=$("adminKey").value.trim();if(!key)throw new Error(tr("keyRequired"));const r=await fetch(server+"/api/session",{method:"GET",headers:{"X-Admin-Key":key}});const d=await r.json().catch(()=>({}));if(!r.ok||d.ok!==true)throw new Error(d.error||tr("notConnected"));localStorage.setItem("tg_dashboard_server",server);localStorage.setItem("tg_dashboard_key",key);sessionStorage.removeItem("tg_dashboard_server");sessionStorage.removeItem("tg_dashboard_key");$("adminKey").value="";showDashboard();applyLanguage(currentLang);await loadChats();try{await api("/api/webhook/register",{method:"POST",body:"{}"});}catch(err){toast(tr("webhookFailed")+err.message);}toast(tr("connectedToast"));}catch(err){$("loginError").textContent=err.message;}finally{$("loginBtn").disabled=false;}});
+$("loginForm").addEventListener("submit",async e=>{
+ e.preventDefault();$("loginBtn").disabled=true;$("loginError").textContent="";
+ try{
+  const server=cleanServerUrl($("serverUrl").value),key=$("adminKey").value.trim();
+  if(!key)throw new Error(tr("keyRequired"));
+  let r,d;
+  try{
+   r=await fetch(server+"/api/session",{method:"GET",headers:{"X-Admin-Key":key}});
+   d=await r.json().catch(()=>({}));
+  }catch(networkError){
+   throw new Error("Не удалось связаться с сервером. Проверь, что Render запущен и завершил Deploy. Подробности: "+networkError.message);
+  }
+  if(!r.ok||d.ok!==true)throw new Error(d.error||tr("notConnected"));
+  localStorage.setItem("tg_dashboard_server",server);
+  localStorage.setItem("tg_dashboard_key",key);
+  sessionStorage.removeItem("tg_dashboard_server");sessionStorage.removeItem("tg_dashboard_key");
+  $("adminKey").value="";
+  showDashboard();applyLanguage(currentLang);
+  try{await loadChats();}
+  catch(loadError){toast("Подключение выполнено, но список чатов не загрузился: "+loadError.message);}
+  try{await api("/api/webhook/register",{method:"POST",body:"{}"});}
+  catch(webhookError){toast(tr("webhookFailed")+webhookError.message);}
+  toast(tr("connectedToast"));
+ }catch(err){$("loginError").textContent=err.message;}
+ finally{$("loginBtn").disabled=false;}
+});
 $("logoutBtn").addEventListener("click",()=>{sessionStorage.removeItem("tg_dashboard_server");sessionStorage.removeItem("tg_dashboard_key");localStorage.removeItem("tg_dashboard_server");localStorage.removeItem("tg_dashboard_key");chats=[];activeChatId=null;showLogin();$("adminKey").value="";toast(tr("disconnectedToast"));});
 
 $("attachBtn").addEventListener("click",()=>$("mediaInput").click());
