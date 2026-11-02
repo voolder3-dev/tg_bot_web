@@ -184,7 +184,8 @@ $("connectBtn").addEventListener("click", async () => {
   $("connectBtn").disabled = true;
   try {
     await loadChats();
-    $("statusText").textContent = "Сервер подключён";
+    await api("/api/webhook/register", { method:"POST", body:JSON.stringify({ public_url:apiBase }) });
+    $("statusText").textContent = "Сервер и Telegram подключены";
     $("statusDot").classList.add("online");
     sessionStorage.setItem("tg_api_url", apiBase);
     sessionStorage.setItem("tg_admin_key", adminKey);
