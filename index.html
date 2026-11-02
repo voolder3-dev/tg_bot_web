@@ -268,7 +268,7 @@ async function renderMessages(ms){
     let media;
     if(m.media_type==="photo"||m.media_type==="sticker"){
      media=document.createElement("img");media.alt=tr("mediaAlt");media.loading="lazy";
-    }else if(m.media_type==="video"||m.media_type==="animation"||m.media_type==="video_note"){
+    }else if(m.media_type==="video"||m.media_type==="animation"||m.media_type==="video_note"||m.media_type==="video_sticker"){
      media=document.createElement("video");media.controls=true;media.playsInline=true;
     }else if(m.media_type==="audio"||m.media_type==="voice"){
      media=document.createElement("audio");media.controls=true;
