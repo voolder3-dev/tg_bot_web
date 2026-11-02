@@ -88,7 +88,7 @@ function extractMedia(message) {
   const fields = [
     ["video", "video", "video/mp4"],
     ["animation", "animation", "video/mp4"],
-    ["sticker", "sticker", message.sticker?.is_video ? "video/webm" : "image/webp"],
+    ["sticker", message.sticker?.is_video ? "video_sticker" : "sticker", message.sticker?.is_video ? "video/webm" : "image/webp"],
     ["document", "document", message.document?.mime_type || "application/octet-stream"],
     ["audio", "audio", message.audio?.mime_type || "audio/mpeg"],
     ["voice", "voice", message.voice?.mime_type || "audio/ogg"],
