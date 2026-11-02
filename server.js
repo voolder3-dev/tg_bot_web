@@ -17,7 +17,7 @@ app.use((req, res, next) => {
   if (origin && allowedOrigins.includes(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Vary", "Origin");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Admin-Key");
   } else if (origin) {
     return res.status(403).json({ ok: false, error: "Этот адрес сайта не разрешён сервером. Проверь ALLOWED_ORIGIN." });
@@ -199,6 +199,21 @@ app.get("/api/chats/:chatId/messages", requireAdmin, async (req, res) => {
   } catch (error) {
     console.error("Messages query failed:", error.message);
     res.status(500).json({ ok: false, error: "Не удалось загрузить сообщения." });
+  }
+});
+
+app.delete("/api/chats/:chatId/messages", requireAdmin, async (req, res) => {
+  const chatId = req.params.chatId;
+  if (!/^-?\\d+$/.test(chatId)) {
+    return res.status(400).json({ ok: false, error: "Некорректный Chat ID." });
+  }
+  try {
+    const result = await pool.query("DELETE FROM messages WHERE chat_id = $1", [chatId]);
+    await pool.query("UPDATE chats SET last_message_at = NULL WHERE chat_id = $1", [chatId]);
+    res.json({ ok: true, deleted: result.rowCount });
+  } catch (error) {
+    console.error("Clear chat failed:", error.message);
+    res.status(500).json({ ok: false, error: "Не удалось очистить историю чата." });
   }
 });
 
