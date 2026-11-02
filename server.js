@@ -226,6 +226,9 @@ app.post("/api/send-media", requireAdmin, upload.single("file"), async (req, res
   if (!/^-?\d+$/.test(chatId) || !file) {
     return res.status(400).json({ ok: false, error: "Выбери файл и проверь Chat ID." });
   }
+  if (file?.mimetype.startsWith("image/") && file.size > 10 * 1024 * 1024) {
+    return res.status(400).json({ ok: false, error: "Размер фото не должен превышать 10 МБ." });
+  }
   if (caption.length > 1024) {
     return res.status(400).json({ ok: false, error: "Подпись к файлу не должна превышать 1024 символа." });
   }
