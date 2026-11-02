@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#090b14">
-<title>Telegram Dashboard</title>
+<title>Telegram Dashboard — Вход</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 :root{color-scheme:dark;--bg:#090b14;--panel:#111522;--border:rgba(255,255,255,.09);--text:#edf0ff;--muted:#8992aa;--purple:#8b5cf6;--blue:#38bdf8;--green:#22c55e;--red:#fb5364}
@@ -17,22 +17,20 @@ h2{font-size:clamp(22px,4vw,30px);margin:0 0 7px;letter-spacing:-.8px}.sub{font-
 .chat-list{max-height:560px;overflow:auto}.chat{display:flex;align-items:center;gap:12px;padding:14px;border-bottom:1px solid #ffffff09;cursor:pointer;transition:.15s}.chat:hover{background:#ffffff08}.chat.active{background:#8b5cf61b;border-left:3px solid var(--purple);padding-left:11px}.avatar{width:40px;height:40px;flex:0 0 40px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#5534a0,#187ba4);font-weight:700}.chat-info{min-width:0;flex:1}.chat-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chat-preview{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:5px}.chat-id{font-size:10px;color:#68728b;margin-top:4px}.empty{padding:35px 20px;text-align:center;color:var(--muted);font-size:12px;line-height:1.7}
 .conversation{display:flex;flex-direction:column;min-height:600px}.conversation-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px}.person{font-size:14px;font-weight:700}.messages{padding:18px;flex:1;min-height:350px;max-height:500px;overflow:auto;display:flex;flex-direction:column;gap:10px;background:radial-gradient(ellipse at center,#8b5cf608,transparent 70%)}.bubble{max-width:min(78%,560px);padding:11px 13px;border-radius:14px;background:#1a2031;border:1px solid var(--border);font-size:13px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;align-self:flex-start}.bubble.outgoing{align-self:flex-end;background:#49318b88;border-color:#8b5cf655}.bubble time{display:block;text-align:right;color:#aab2c7;font-size:9px;margin-top:6px}.composer{padding:14px;border-top:1px solid var(--border);display:flex;gap:10px}.composer textarea{min-height:46px;max-height:130px;resize:vertical;flex:1}.hint{font-size:10px;color:var(--muted);padding:0 15px 12px}.toast{position:fixed;right:20px;bottom:20px;max-width:min(420px,calc(100vw - 40px));padding:13px 16px;border-radius:12px;background:#1b2335;border:1px solid var(--border);font-size:12px;box-shadow:0 10px 35px #0008;display:none}.toast.show{display:block}.footer{text-align:center;color:#59627a;font-size:10px;margin:18px 0}
 @media(max-width:800px){body{padding:14px}.setup{grid-template-columns:1fr}.layout{grid-template-columns:1fr}.chat-list{max-height:270px}.conversation{min-height:470px}.messages{min-height:280px;max-height:400px}.top{align-items:flex-start}.status{font-size:10px}}
+[hidden]{display:none!important}.login-wrap{min-height:100vh;display:grid;place-items:center;padding:24px}.login-card{width:min(420px,100%);padding:30px;background:#111522ee;border:1px solid var(--border);border-radius:22px;box-shadow:0 24px 80px #0006;animation:appear .4s ease both}.login-logo{width:54px;height:54px;border-radius:17px;display:grid;place-items:center;font-size:27px;background:linear-gradient(135deg,#8b5cf6,#38bdf8);margin-bottom:22px}.login-card h1{font-size:24px;margin:0 0 8px}.login-card p{font-size:13px;color:var(--muted);line-height:1.6;margin:0 0 22px}.login-card .field{margin:15px 0}.login-card .btn{width:100%;margin-top:8px}.login-error{min-height:18px;color:#fb7185;font-size:12px;margin-top:12px}.logout{border:0;background:transparent;color:#aeb8ce;cursor:pointer;font-size:11px;padding:4px 0 4px 10px}@keyframes appear{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 </style>
 </head>
 <body>
-<div class="app">
+<section class="login-wrap" id="loginView"><form class="login-card" id="loginForm"><div class="login-logo">✈</div><h1>С возвращением</h1><p>Войди в панель управления Telegram-ботом. Браузер запомнит авторизацию на этом устройстве.</p><div class="field"><label for="adminKey">КЛЮЧ ДОСТУПА</label><input class="input" id="adminKey" type="password" autocomplete="current-password" placeholder="Вставь ADMIN_API_KEY из Render" required></div><button class="btn" id="loginBtn" type="submit">Войти в панель</button><div class="login-error" id="loginError" role="alert"></div></form></section>
+<div class="app" id="dashboard" hidden>
 <header class="top">
   <div class="brand"><div class="logo">✈</div><div><h1>Telegram Dashboard</h1><p>Панель управления ботом</p></div></div>
-  <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">Не подключено</span></div>
+  <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">Проверка подключения</span><button class="logout" id="logoutBtn" type="button">Выйти</button></div>
 </header>
 <h2>Сообщения и чаты</h2>
 <p class="sub">Пользователи появятся здесь после того, как напишут боту или нажмут Start и отправят сообщение.</p>
 
-<section class="setup">
-  <div class="field"><label for="apiUrl">АДРЕС СЕРВЕРА RENDER</label><input class="input" id="apiUrl" type="url" placeholder="https://your-service.onrender.com"></div>
-  <div class="field"><label for="adminKey">КЛЮЧ ДОСТУПА ПАНЕЛИ</label><input class="input" id="adminKey" type="password" placeholder="Вставь ADMIN_API_KEY из Render"></div>
-  <button class="btn" id="connectBtn">Подключиться</button>
-</section>
+
 
 <main class="layout">
   <section class="panel">
@@ -51,180 +49,24 @@ h2{font-size:clamp(22px,4vw,30px);margin:0 0 7px;letter-spacing:-.8px}.sub{font-
 </div>
 <div class="toast" id="toast" role="status"></div>
 <script>
-const $ = (id) => document.getElementById(id);
-let apiBase = "";
-let adminKey = "";
-let chats = [];
-let activeChatId = null;
-let refreshTimer = null;
-
-function toast(message) {
-  const el = $("toast");
-  el.textContent = message;
-  el.classList.add("show");
-  clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => el.classList.remove("show"), 4000);
-}
-function api(path, options = {}) {
-  return fetch(apiBase + path, {
-    ...options,
-    headers: { "Content-Type": "application/json", "X-Admin-Key": adminKey, ...(options.headers || {}) }
-  }).then(async response => {
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || data.ok !== true) throw new Error(data.error || data.description || "Ошибка сервера");
-    return data;
-  });
-}
-function displayName(chat) {
-  return chat.title || [chat.first_name, chat.last_name].filter(Boolean).join(" ") || (chat.username ? "@" + chat.username : "Пользователь");
-}
-function renderChats() {
-  const query = $("searchInput").value.trim().toLowerCase();
-  const visible = chats.filter(c => [displayName(c), c.username, c.chat_id, c.last_message].join(" ").toLowerCase().includes(query));
-  $("chatCount").textContent = chats.length + (chats.length === 1 ? " чат" : " чатов");
-  const list = $("chatList");
-  list.replaceChildren();
-  if (!visible.length) {
-    const empty = document.createElement("div");
-    empty.className = "empty";
-    empty.textContent = chats.length ? "Ничего не найдено." : "Пока нет чатов. Напиши своему боту в Telegram и отправь /start.";
-    list.append(empty);
-    return;
-  }
-  visible.forEach(chat => {
-    const item = document.createElement("div");
-    item.className = "chat" + (String(chat.chat_id) === String(activeChatId) ? " active" : "");
-    const avatar = document.createElement("div");
-    avatar.className = "avatar";
-    avatar.textContent = displayName(chat).trim().slice(0, 1).toUpperCase() || "T";
-    const info = document.createElement("div");
-    info.className = "chat-info";
-    const name = document.createElement("div");
-    name.className = "chat-name";
-    name.textContent = displayName(chat);
-    const preview = document.createElement("div");
-    preview.className = "chat-preview";
-    preview.textContent = chat.last_message || "Нет сообщений";
-    const id = document.createElement("div");
-    id.className = "chat-id";
-    id.textContent = "ID: " + chat.chat_id;
-    info.append(name, preview, id);
-    item.append(avatar, info);
-    item.addEventListener("click", () => selectChat(chat.chat_id));
-    list.append(item);
-  });
-}
-function renderMessages(messages) {
-  const box = $("messages");
-  box.replaceChildren();
-  if (!messages.length) {
-    const empty = document.createElement("div");
-    empty.className = "empty";
-    empty.textContent = "В этом чате пока нет сохранённых сообщений.";
-    box.append(empty);
-    return;
-  }
-  messages.forEach(message => {
-    const bubble = document.createElement("div");
-    bubble.className = "bubble " + (message.direction === "outgoing" ? "outgoing" : "incoming");
-    const body = document.createElement("div");
-    body.textContent = message.text;
-    const time = document.createElement("time");
-    time.textContent = new Date(message.created_at).toLocaleString("ru-RU", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
-    bubble.append(body, time);
-    box.append(bubble);
-  });
-  box.scrollTop = box.scrollHeight;
-}
-async function loadChats() {
-  const data = await api("/api/chats");
-  chats = data.chats || [];
-  renderChats();
-  if (activeChatId && !chats.some(c => String(c.chat_id) === String(activeChatId))) {
-    activeChatId = null;
-    $("activeName").textContent = "Выбери чат";
-    $("activeId").textContent = "Переписка появится здесь";
-    $("messageText").disabled = true;
-    $("sendBtn").disabled = true;
-    renderMessages([]);
-  }
-}
-async function selectChat(chatId) {
-  activeChatId = String(chatId);
-  const chat = chats.find(c => String(c.chat_id) === activeChatId);
-  $("activeName").textContent = chat ? displayName(chat) : "Чат";
-  $("activeId").textContent = "Telegram Chat ID: " + activeChatId;
-  $("messageText").disabled = false;
-  $("sendBtn").disabled = false;
-  renderChats();
-  await loadMessages();
-}
-async function loadMessages() {
-  if (!activeChatId) return;
-  const data = await api("/api/chats/" + encodeURIComponent(activeChatId) + "/messages");
-  renderMessages(data.messages || []);
-}
-async function refreshAll() {
-  if (!apiBase || !adminKey) return;
-  try {
-    await loadChats();
-    await loadMessages();
-  } catch (error) {
-    $("statusText").textContent = "Ошибка соединения";
-    $("statusDot").classList.remove("online");
-    toast(error.message);
-  }
-}
-$("connectBtn").addEventListener("click", async () => {
-  const url = $("apiUrl").value.trim().replace(/\/$/, "");
-  const key = $("adminKey").value.trim();
-  if (!/^https:\/\//i.test(url) || !key) return toast("Введи HTTPS-адрес Render и ключ доступа.");
-  apiBase = url;
-  adminKey = key;
-  $("connectBtn").disabled = true;
-  try {
-    await loadChats();
-    await api("/api/webhook/register", { method:"POST", body:JSON.stringify({ public_url:apiBase }) });
-    $("statusText").textContent = "Сервер и Telegram подключены";
-    $("statusDot").classList.add("online");
-    sessionStorage.setItem("tg_api_url", apiBase);
-    sessionStorage.setItem("tg_admin_key", adminKey);
-    if (refreshTimer) clearInterval(refreshTimer);
-    refreshTimer = setInterval(refreshAll, 10000);
-    toast("Подключение успешно.");
-  } catch (error) {
-    apiBase = "";
-    adminKey = "";
-    $("statusText").textContent = "Не подключено";
-    $("statusDot").classList.remove("online");
-    toast(error.message);
-  } finally {
-    $("connectBtn").disabled = false;
-  }
-});
-$("searchInput").addEventListener("input", renderChats);
-$("refreshBtn").addEventListener("click", refreshAll);
-$("sendForm").addEventListener("submit", async event => {
-  event.preventDefault();
-  if (!activeChatId) return;
-  const text = $("messageText").value.trim();
-  if (!text) return;
-  $("sendBtn").disabled = true;
-  try {
-    await api("/api/send", { method:"POST", body:JSON.stringify({ chat_id:activeChatId, text }) });
-    $("messageText").value = "";
-    await refreshAll();
-    toast("Сообщение отправлено.");
-  } catch (error) {
-    toast(error.message);
-  } finally {
-    $("sendBtn").disabled = false;
-  }
-});
-const savedUrl = sessionStorage.getItem("tg_api_url");
-const savedKey = sessionStorage.getItem("tg_admin_key");
-if (savedUrl) $("apiUrl").value = savedUrl;
-if (savedKey) $("adminKey").value = savedKey;
+const $ = id => document.getElementById(id);
+let chats = [], activeChatId = null, refreshTimer = null, busy = false;
+function toast(message){const el=$("toast");el.textContent=message;el.classList.add("show");clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove("show"),4000);}
+async function api(path,options={}){const r=await fetch(path,{...options,credentials:"same-origin",headers:{"Content-Type":"application/json",...(options.headers||{})}});const d=await r.json().catch(()=>({}));if(r.status===401){showLogin();throw new Error(d.error||"Войди снова.");}if(!r.ok||d.ok!==true)throw new Error(d.error||"Ошибка сервера");return d;}
+function showLogin(){if(refreshTimer)clearInterval(refreshTimer);refreshTimer=null;$("dashboard").hidden=true;$("loginView").hidden=false;$("statusText").textContent="Не подключено";$("statusDot").classList.remove("online");$("messageText").disabled=true;$("sendBtn").disabled=true;$("adminKey").value="";}
+function showDashboard(){$("loginView").hidden=true;$("dashboard").hidden=false;$("statusText").textContent="Подключено";$("statusDot").classList.add("online");if(refreshTimer)clearInterval(refreshTimer);refreshTimer=setInterval(refreshAll,10000);}
+function displayName(c){return c.title||[c.first_name,c.last_name].filter(Boolean).join(" ")||(c.username?"@"+c.username:"Пользователь");}
+function renderChats(){const q=$("searchInput").value.trim().toLowerCase(),v=chats.filter(c=>[displayName(c),c.username,c.chat_id,c.last_message].join(" ").toLowerCase().includes(q));$("chatCount").textContent=chats.length+(chats.length===1?" чат":" чатов");const list=$("chatList");list.replaceChildren();if(!v.length){const e=document.createElement("div");e.className="empty";e.textContent=chats.length?"Ничего не найдено.":"Пока нет чатов. Напиши боту в Telegram и отправь /start.";list.append(e);return;}v.forEach(c=>{const item=document.createElement("div");item.className="chat"+(String(c.chat_id)===String(activeChatId)?" active":"");const av=document.createElement("div");av.className="avatar";av.textContent=displayName(c).slice(0,1).toUpperCase()||"T";const info=document.createElement("div");info.className="chat-info";const n=document.createElement("div");n.className="chat-name";n.textContent=displayName(c);const p=document.createElement("div");p.className="chat-preview";p.textContent=c.last_message||"Нет сообщений";const id=document.createElement("div");id.className="chat-id";id.textContent="ID: "+c.chat_id;info.append(n,p,id);item.append(av,info);item.addEventListener("click",()=>selectChat(c.chat_id));list.append(item);});}
+function renderMessages(ms){const box=$("messages");box.replaceChildren();if(!ms.length){const e=document.createElement("div");e.className="empty";e.textContent="В этом чате пока нет сохранённых сообщений.";box.append(e);return;}ms.forEach(m=>{const b=document.createElement("div");b.className="bubble "+(m.direction==="outgoing"?"outgoing":"incoming");const body=document.createElement("div");body.textContent=m.text;const t=document.createElement("time");t.textContent=new Date(m.created_at).toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});b.append(body,t);box.append(b);});box.scrollTop=box.scrollHeight;}
+async function loadChats(){const d=await api("/api/chats");chats=d.chats||[];renderChats();}
+async function loadMessages(){if(!activeChatId)return;const d=await api("/api/chats/"+encodeURIComponent(activeChatId)+"/messages");renderMessages(d.messages||[]);}
+async function selectChat(id){activeChatId=String(id);const c=chats.find(x=>String(x.chat_id)===activeChatId);$("activeName").textContent=c?displayName(c):"Чат";$("activeId").textContent="Telegram Chat ID: "+activeChatId;$("messageText").disabled=false;$("sendBtn").disabled=false;renderChats();await loadMessages();}
+async function refreshAll(){if(busy||$("dashboard").hidden)return;busy=true;try{await loadChats();await loadMessages();}catch(e){if(!e.message.includes("Войди"))toast(e.message);}finally{busy=false;}}
+$("loginForm").addEventListener("submit",async e=>{e.preventDefault();$("loginBtn").disabled=true;$("loginError").textContent="";try{const r=await fetch("/api/login",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:$("adminKey").value.trim()})});const d=await r.json().catch(()=>({}));if(!r.ok||d.ok!==true)throw new Error(d.error||"Не удалось войти.");$("adminKey").value="";showDashboard();await loadChats();try{await api("/api/webhook/register",{method:"POST",body:"{}"});}catch(err){toast("Панель открыта, но webhook не обновлён: "+err.message);}toast("Вход выполнен.");}catch(err){$("loginError").textContent=err.message;}finally{$("loginBtn").disabled=false;}});
+$("logoutBtn").addEventListener("click",async()=>{try{await fetch("/api/logout",{method:"POST",credentials:"same-origin"});}finally{chats=[];activeChatId=null;showLogin();toast("Вы вышли из панели.");}});
+$("searchInput").addEventListener("input",renderChats);$("refreshBtn").addEventListener("click",refreshAll);
+$("sendForm").addEventListener("submit",async e=>{e.preventDefault();if(!activeChatId)return;const message=$("messageText").value.trim();if(!message)return;$("sendBtn").disabled=true;try{await api("/api/send",{method:"POST",body:JSON.stringify({chat_id:activeChatId,text:message})});$("messageText").value="";await refreshAll();toast("Сообщение отправлено.");}catch(err){toast(err.message);}finally{$("sendBtn").disabled=!activeChatId;}});
+(async()=>{try{await api("/api/session");showDashboard();await loadChats();}catch(_){showLogin();}})();
 </script>
 </body>
 </html>
