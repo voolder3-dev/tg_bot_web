@@ -26,6 +26,16 @@ h2{font-size:clamp(22px,4vw,30px);margin:0 0 7px;letter-spacing:-.8px}.sub{font-
 .bubble video.message-media,.bubble audio.message-media{width:min(100%,420px);max-height:300px}
 .bubble .media-caption{margin-top:5px;white-space:pre-wrap;overflow-wrap:anywhere}
 .bubble .media-loading{font-size:11px;color:var(--muted);padding:8px 0}
+.voice-player{width:min(100%,420px);min-width:230px;display:grid;grid-template-columns:42px minmax(0,1fr);gap:9px 11px;align-items:center;padding:12px;border:1px solid color-mix(in srgb,var(--purple) 34%,var(--border));border-radius:14px;background:linear-gradient(135deg,color-mix(in srgb,var(--purple) 15%,var(--panel)),color-mix(in srgb,var(--blue) 8%,var(--panel)));box-shadow:inset 0 1px 0 #ffffff0a}
+.voice-player audio{display:none}
+.voice-play{width:42px;height:42px;border:0;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--purple),var(--accent2));color:#fff;font-size:16px;cursor:pointer;box-shadow:0 4px 16px color-mix(in srgb,var(--purple) 35%,transparent)}
+.voice-play:disabled{opacity:.55;cursor:wait}
+.voice-track{min-width:0;display:grid;gap:5px}
+.voice-progress{width:100%;height:5px;margin:0;accent-color:var(--purple);cursor:pointer}
+.voice-times{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:10px;font-variant-numeric:tabular-nums}
+.voice-bottom{grid-column:2;display:flex;align-items:center;gap:7px;color:var(--muted);font-size:10px}
+.voice-volume{width:68px;height:4px;accent-color:var(--blue);cursor:pointer}
+.voice-title{font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 .hint{font-size:10px;color:var(--muted);padding:0 15px 12px}.toast{position:fixed;right:20px;bottom:20px;max-width:min(420px,calc(100vw - 40px));padding:13px 16px;border-radius:12px;background:#1b2335;border:1px solid var(--border);font-size:12px;box-shadow:0 10px 35px #0008;display:none}.toast.show{display:block}
 .notification-prompt{position:fixed;inset:0;z-index:100;display:none;place-items:center;padding:20px;background:#050711bb;backdrop-filter:blur(8px)}
@@ -264,6 +274,42 @@ async function fetchMediaUrl(messageId){
  }
  return url;
 }
+function formatAudioTime(value){
+ if(!Number.isFinite(value)||value<0)return "0:00";
+ const seconds=Math.floor(value);
+ return Math.floor(seconds/60)+":"+String(seconds%60).padStart(2,"0");
+}
+function createCustomAudioPlayer(url,m){
+ const wrap=document.createElement("div");wrap.className="voice-player";
+ const audio=document.createElement("audio");audio.preload="metadata";audio.src=url;audio.playsInline=true;
+ const play=document.createElement("button");play.type="button";play.className="voice-play";play.textContent="▶";play.setAttribute("aria-label",currentLang==="ru"?"Воспроизвести":"Play");play.disabled=true;
+ const track=document.createElement("div");track.className="voice-track";
+ const title=document.createElement("div");title.className="voice-title";title.textContent=m.media_type==="voice"?(currentLang==="ru"?"Голосовое сообщение":"Voice message"):(currentLang==="ru"?"Аудиосообщение":"Audio message");
+ const progress=document.createElement("input");progress.type="range";progress.className="voice-progress";progress.min="0";progress.max="1000";progress.value="0";progress.step="1";progress.disabled=true;progress.setAttribute("aria-label",currentLang==="ru"?"Позиция воспроизведения":"Playback position");
+ const times=document.createElement("div");times.className="voice-times";
+ const current=document.createElement("span");current.textContent="0:00";
+ const duration=document.createElement("span");duration.textContent="0:00";
+ times.append(current,duration);track.append(title,progress,times);
+ const bottom=document.createElement("div");bottom.className="voice-bottom";
+ const volumeLabel=document.createElement("span");volumeLabel.textContent=currentLang==="ru"?"Громкость":"Volume";
+ const volume=document.createElement("input");volume.type="range";volume.className="voice-volume";volume.min="0";volume.max="1";volume.step="0.05";volume.value="0.85";volume.setAttribute("aria-label",volumeLabel.textContent);
+ bottom.append(volumeLabel,volume);
+ play.addEventListener("click",async()=>{
+  if(audio.paused){try{await audio.play();}catch{toast(currentLang==="ru"?"Не удалось запустить аудио.":"Could not play audio.");}}
+  else audio.pause();
+ });
+ audio.addEventListener("play",()=>{play.textContent="Ⅱ";play.setAttribute("aria-label",currentLang==="ru"?"Пауза":"Pause");});
+ audio.addEventListener("pause",()=>{play.textContent="▶";play.setAttribute("aria-label",currentLang==="ru"?"Воспроизвести":"Play");});
+ audio.addEventListener("loadedmetadata",()=>{duration.textContent=formatAudioTime(audio.duration);play.disabled=false;progress.disabled=false;});
+ audio.addEventListener("timeupdate",()=>{current.textContent=formatAudioTime(audio.currentTime);if(Number.isFinite(audio.duration)&&audio.duration>0)progress.value=String(Math.round(audio.currentTime/audio.duration*1000));});
+ audio.addEventListener("ended",()=>{audio.currentTime=0;progress.value="0";current.textContent="0:00";});
+ audio.addEventListener("error",()=>{title.textContent=currentLang==="ru"?"Не удалось загрузить аудио":"Could not load audio";play.disabled=true;});
+ progress.addEventListener("input",()=>{if(Number.isFinite(audio.duration)&&audio.duration>0){audio.currentTime=(Number(progress.value)/1000)*audio.duration;}});
+ volume.addEventListener("input",()=>{audio.volume=Number(volume.value);});
+ audio.volume=0.85;
+ wrap.append(audio,play,track,bottom);
+ return wrap;
+}
 async function renderMessages(ms){
  const box=$("messages");box.replaceChildren();
  if(!ms.length){const e=document.createElement("div");e.className="empty";e.textContent=tr("noMessages");box.append(e);return;}
@@ -280,24 +326,11 @@ async function renderMessages(ms){
     }else if(m.media_type==="video"||m.media_type==="animation"||m.media_type==="video_note"||m.media_type==="video_sticker"){
      media=document.createElement("video");media.controls=true;media.playsInline=true;
     }else if(m.media_type==="audio"||m.media_type==="voice"){
-     media=document.createElement("audio");
-     media.controls=true;
-     media.preload="metadata";
-     media.playsInline=true;
-     media.setAttribute("aria-label",m.media_type==="voice"?"Голосовое сообщение":"Аудиосообщение");
-     const source=document.createElement("source");
-     source.src=url;
-     source.type=m.media_type==="voice"?"audio/ogg; codecs=opus":(m.media_mime_type||"audio/mpeg");
-     media.append(source);
-     media.append(document.createTextNode("Ваш браузер не поддерживает воспроизведение аудио. "));
-     const fallback=document.createElement("a");
-     fallback.href=url;fallback.target="_blank";fallback.rel="noopener";fallback.textContent=tr("openFile");
-     media.append(fallback);
-     media.addEventListener("error",()=>{loading.textContent="Не удалось воспроизвести голосовое. Можно открыть файл отдельно: ";const link=document.createElement("a");link.href=url;link.target="_blank";link.rel="noopener";link.textContent=tr("openFile");link.style.color="var(--blue)";loading.append(link);});
+     media=createCustomAudioPlayer(url,m);
     }else{
      const link=document.createElement("a");link.href=url;link.target="_blank";link.rel="noopener";link.textContent=m.media_file_name||tr("openFile");link.style.color="var(--blue)";b.insertBefore(link,b.firstChild);media=null;
     }
-    if(media){media.className="message-media";media.src=url;b.insertBefore(media,b.firstChild);}
+    if(media){media.classList.add("message-media");if(media instanceof HTMLMediaElement)media.src=url;b.insertBefore(media,b.firstChild);}
    }).catch(()=>{loading.textContent=tr("mediaUnavailable");});
   }
   const body=document.createElement("div");body.className=m.media_type?"media-caption":"";body.textContent=m.text||"";
