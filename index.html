@@ -164,6 +164,7 @@ let notificationPromptShown = false;
 let voiceRecorder = null;
 let voiceStream = null;
 let voiceChunks = [];
+let voiceTargetChatId = null;
 
 function playSoftNotification(){
  if(!notificationAudio)return;
@@ -266,7 +267,7 @@ function toast(message){const el=$("toast");el.textContent=message;el.classList.
 function connection(){return {server:localStorage.getItem("tg_dashboard_server")||sessionStorage.getItem("tg_dashboard_server")||"",key:localStorage.getItem("tg_dashboard_key")||sessionStorage.getItem("tg_dashboard_key")||""};}
 function cleanServerUrl(value){const url=new URL(value.trim());if(url.protocol!=="https:"&&!(url.protocol==="http:"&&["localhost","127.0.0.1"].includes(url.hostname)))throw new Error(tr("https"));if(url.username||url.password||url.search||url.hash)throw new Error(tr("badUrl"));if(url.pathname!=="/")throw new Error(tr("pathUrl"));return url.origin;}
 async function api(path,options={}){const cfg=connection();if(!cfg.server||!cfg.key)throw new Error(tr("loginFirst"));const headers={"X-Admin-Key":cfg.key,...(options.headers||{})};if(!(options.body instanceof FormData))headers["Content-Type"]="application/json";const r=await fetch(cfg.server+path,{...options,headers});const d=await r.json().catch(()=>({}));if(r.status===401){showLogin();throw new Error(d.error||tr("checkKey"));}if(!r.ok||d.ok!==true)throw new Error(d.error||tr("serverError"));return d;}
-function showLogin(){if(voiceRecorder&&voiceRecorder.state!=="inactive")voiceRecorder.stop();if(voiceStream)voiceStream.getTracks().forEach(track=>track.stop());voiceStream=null;voiceRecorder=null;$("voiceBtn").disabled=true;$("voiceBtn").classList.remove("recording");$("voiceBtn").textContent="🎙";$("voiceStatus").textContent="";if(refreshTimer)clearInterval(refreshTimer);refreshTimer=null;$("dashboard").hidden=true;$("loginView").hidden=false;$("statusText").textContent=tr("offline");$("statusDot").classList.remove("online");$("messageText").disabled=true;$("sendBtn").disabled=true;$("attachBtn").disabled=true;$("clearChatBtn").disabled=true;}
+function showLogin(){if(voiceRecorder&&voiceRecorder.state!=="inactive"){voiceRecorder.onstop=null;voiceRecorder.stop();}voiceChunks=[];voiceTargetChatId=null;if(voiceStream)voiceStream.getTracks().forEach(track=>track.stop());voiceStream=null;voiceRecorder=null;$("voiceBtn").disabled=true;$("voiceBtn").classList.remove("recording");$("voiceBtn").textContent="🎙";$("voiceStatus").textContent="";if(refreshTimer)clearInterval(refreshTimer);refreshTimer=null;$("dashboard").hidden=true;$("loginView").hidden=false;$("statusText").textContent=tr("offline");$("statusDot").classList.remove("online");$("messageText").disabled=true;$("sendBtn").disabled=true;$("attachBtn").disabled=true;$("clearChatBtn").disabled=true;}
 function showDashboard(){$("loginView").hidden=true;$("dashboard").hidden=false;$("statusText").textContent=tr("connected");$("statusDot").classList.add("online");$("connectedServer").textContent=connection().server;if(refreshTimer)clearInterval(refreshTimer);refreshTimer=setInterval(refreshAll,10000);setTimeout(maybeAskForNotifications,250);}
 function displayName(c){return c.title||[c.first_name,c.last_name].filter(Boolean).join(" ")||(c.username?"@"+c.username:tr("user"));}
 function renderChats(){const q=$("searchInput").value.trim().toLowerCase(),v=chats.filter(c=>[displayName(c),c.username,c.chat_id,c.last_message].join(" ").toLowerCase().includes(q));$("chatCount").textContent=chats.length+" "+(chats.length===1?tr("chat"):tr("chats"));const list=$("chatList");list.replaceChildren();if(!v.length){const e=document.createElement("div");e.className="empty";e.textContent=chats.length?tr("nothingFound"):tr("noChats");list.append(e);return;}v.forEach(c=>{const item=document.createElement("div");item.className="chat"+(String(c.chat_id)===String(activeChatId)?" active":"");const av=document.createElement("div");av.className="avatar";av.textContent=displayName(c).slice(0,1).toUpperCase()||"T";const info=document.createElement("div");info.className="chat-info";const n=document.createElement("div");n.className="chat-name";n.textContent=displayName(c);const p=document.createElement("div");p.className="chat-preview";p.textContent=c.last_message||"Нет сообщений";const id=document.createElement("div");id.className="chat-id";id.textContent=tr("id")+c.chat_id;info.append(n,p,id);item.append(av,info);item.addEventListener("click",()=>selectChat(c.chat_id));list.append(item);});}
@@ -383,19 +384,21 @@ $("logoutBtn").addEventListener("click",()=>{sessionStorage.removeItem("tg_dashb
 
 
 async function sendRecordedVoice(blob){
+ const targetChatId=voiceTargetChatId||activeChatId;
+ if(!targetChatId)return;
  if(!blob||!blob.size){toast(currentLang==="ru"?"Запись пустая. Попробуй ещё раз.":"The recording is empty. Please try again.");return;}
  if(blob.size>20*1024*1024){toast(currentLang==="ru"?"Запись слишком большая (максимум 20 МБ).":"Recording is too large (20 MB maximum).");return;}
  const button=$("voiceBtn");button.disabled=true;
  $("voiceStatus").textContent=currentLang==="ru"?"Отправка голосового сообщения…":"Sending voice message…";
  try{
-  const data=new FormData();data.append("chat_id",activeChatId);
+  const data=new FormData();data.append("chat_id",targetChatId);
   const extension=blob.type.includes("ogg")?"ogg":blob.type.includes("mp4")?"m4a":"webm";
   data.append("voice",blob,"recording."+extension);
   await api("/api/send-voice",{method:"POST",body:data});
   playSendSound();await refreshAll();
   toast(currentLang==="ru"?"Голосовое сообщение отправлено.":"Voice message sent.");
  }catch(error){toast(error.message);}
- finally{$("voiceStatus").textContent="";button.disabled=!activeChatId;}
+ finally{voiceTargetChatId=null;$("voiceStatus").textContent="";button.disabled=!activeChatId;}
 }
 async function toggleVoiceRecording(){
  const button=$("voiceBtn");
@@ -409,6 +412,7 @@ async function toggleVoiceRecording(){
   toast(currentLang==="ru"?"Запись аудио не поддерживается этим браузером.":"Audio recording is not supported by this browser.");return;
  }
  try{
+  voiceTargetChatId=activeChatId;
   voiceStream=await navigator.mediaDevices.getUserMedia({audio:true});
   const mimeCandidates=["audio/webm;codecs=opus","audio/ogg;codecs=opus","audio/mp4"];
   const mimeType=mimeCandidates.find(type=>MediaRecorder.isTypeSupported(type));
