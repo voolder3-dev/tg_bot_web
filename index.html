@@ -451,14 +451,23 @@ function notifyIncoming(chat){
  }
 }
 function checkForNewMessages(nextChats){
+ const chatsToMove=[];
  nextChats.forEach(chat=>{
   const id=String(chat.chat_id),messageId=chat.last_message_id==null?null:String(chat.last_message_id);
   const previous=knownIncomingMessages.get(id);
   if(chat.last_message_direction==="incoming"&&messageId&&previous!==messageId){
    notifyIncoming(chat);
-   if(previous!==undefined)chatsWithFreshMessages.add(id);
+   if(previous!==undefined){
+    chatsWithFreshMessages.add(id);
+    chatsToMove.push(id);
+   }
   }
   knownIncomingMessages.set(id,messageId);
+ });
+ // Новые входящие чаты перемещаем вниз списка, чтобы обновление не уносило их из поля зрения.
+ chatsToMove.forEach(id=>{
+  const index=nextChats.findIndex(chat=>String(chat.chat_id)===id);
+  if(index>=0)nextChats.push(nextChats.splice(index,1)[0]);
  });
 }
 function unlockDashboardAudio(){
