@@ -131,6 +131,12 @@ body,body *{transition:background-color .24s ease,border-color .24s ease,color .
 .bubble.outgoing.message-enter{--message-origin:right center}
 .bubble.incoming.message-enter{animation-name:messageArriveIncoming}
 .bubble.outgoing.message-enter{animation-name:messageArriveOutgoing}
+.bubble.incoming.message-enter{animation:messageArriveIncoming .28s ease-out both}
+.bubble.outgoing.message-enter{animation:messageArriveOutgoing .28s cubic-bezier(.2,.75,.3,1) both}
+@keyframes messageArriveIncoming{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+@keyframes messageArriveOutgoing{from{opacity:0;transform:translate(10px,5px) scale(.98)}to{opacity:1;transform:translate(0,0) scale(1)}}
+.conversation-body.chat-opening{animation:chatOpening .24s ease-out both}
+@keyframes chatOpening{from{opacity:.65;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 @keyframes messageArriveIncoming{0%{opacity:0;transform:translate3d(-12px,12px,0) scale(.94);filter:blur(3px)}65%{opacity:1;transform:translate3d(2px,-1px,0) scale(1.015);filter:blur(0)}100%{opacity:1;transform:translate3d(0,0,0) scale(1)}}
 @keyframes messageArriveOutgoing{0%{opacity:0;transform:translate3d(14px,12px,0) scale(.92);filter:blur(3px);box-shadow:0 0 0 transparent}65%{opacity:1;transform:translate3d(-2px,-1px,0) scale(1.025);filter:blur(0);box-shadow:0 0 24px color-mix(in srgb,var(--purple) 22%,transparent)}100%{opacity:1;transform:translate3d(0,0,0) scale(1);box-shadow:0 0 0 transparent}}
 .chat.active .avatar{box-shadow:0 0 0 3px color-mix(in srgb,var(--purple) 20%,transparent),0 0 20px color-mix(in srgb,var(--purple) 25%,transparent)}
@@ -771,12 +777,12 @@ function renderMediaGallery(){
   card.append(label);card.addEventListener("click",()=>{setConversationTab("chat");const bubble=$("messages").querySelector('[data-message-id="'+m.id+'"]');if(bubble)bubble.scrollIntoView({behavior:"smooth",block:"center"});});gallery.append(card);
  });
 }
-async function renderMessages(ms){
+async function renderMessages(ms,{animateNew=true}={}){
  const box=$("messages");
  const wasAtBottom=box.scrollHeight-box.scrollTop-box.clientHeight<80;
  const oldTop=box.scrollTop;
  const previousMessageIds=new Set(currentMessages.map(item=>String(item.id)));
- const animateNewMessages=currentMessages.length>0;
+
  if(mediaObserver){mediaObserver.disconnect();mediaObserver=null;}
  box.replaceChildren();currentMessages=ms;
  if(!ms.length){const e=document.createElement("div");e.className="empty";e.textContent=tr("noMessages");box.append(e);if(currentConversationTab==="media")renderMediaGallery();return;}
@@ -784,7 +790,7 @@ async function renderMessages(ms){
   mediaObserver=new IntersectionObserver(entries=>{entries.forEach(entry=>{if(!entry.isIntersecting)return;mediaObserver.unobserve(entry.target);if(entry.target._mediaLoadTask)entry.target._mediaLoadTask();});},{root:box,rootMargin:"350px 0px"});
  }
  ms.forEach(m=>{
-  const b=document.createElement("div");b.className="bubble "+(m.direction==="outgoing"?"outgoing":"incoming");if(animateNewMessages&&!previousMessageIds.has(String(m.id)))b.classList.add("message-enter");b.dataset.messageId=m.id;
+  const b=document.createElement("div");b.className="bubble "+(m.direction==="outgoing"?"outgoing":"incoming");if(animateNew&&!previousMessageIds.has(String(m.id)))b.classList.add("message-enter");b.dataset.messageId=m.id;
   if(m.reply_to_message_id){const quote=document.createElement("div");quote.className="media-loading";const original=ms.find(item=>String(item.telegram_message_id)===String(m.reply_to_message_id));quote.textContent="↪ "+(original?.text||"Ответ на сообщение");b.append(quote);}
   if(m.media_type&&m.id){
    const loading=document.createElement("div");loading.className="media-loading";loading.textContent=currentLang==="ru"?"Медиа загрузится при прокрутке сюда…":"Media will load as you scroll here…";b.append(loading);
@@ -806,9 +812,9 @@ async function loadMessages({force=false}={}){
  if(!force&&messageSignature(next)===messageSignature(currentMessages))return;
  const activeAudio=Array.from($("messages").querySelectorAll("audio")).some(a=>!a.paused&&!a.ended);
  if(!force&&activeAudio){pendingMessages=next;return;}
- pendingMessages=null;await renderMessages(next);
+ pendingMessages=null;await renderMessages(next,{animateNew:!force});
 }
-async function selectChat(id){if(String(id)!==String(activeChatId))playChatOpenSound();activeChatId=String(id);currentMessages=[];pendingMessages=null;pinnedMessage=null;setReplyTarget(null);setConversationTab("chat");const c=chats.find(x=>String(x.chat_id)===activeChatId);$("activeName").textContent=c?displayName(c):tr("chooseChatName");$("activeId").textContent=tr("chatId")+activeChatId;updatePageTitle();$("messageText").disabled=false;$("sendBtn").disabled=false;$("attachBtn").disabled=false;$("voiceBtn").disabled=false;$("clearChatBtn").disabled=false;renderChats();updateDetailsPanel();await Promise.all([loadMessages({force:true}),refreshPinnedMessage()]);}
+async function selectChat(id){if(String(id)!==String(activeChatId))playChatOpenSound();const conversationBody=$("messages").parentElement;if(conversationBody){conversationBody.classList.remove("chat-opening");void conversationBody.offsetWidth;conversationBody.classList.add("chat-opening");}activeChatId=String(id);currentMessages=[];pendingMessages=null;pinnedMessage=null;setReplyTarget(null);setConversationTab("chat");const c=chats.find(x=>String(x.chat_id)===activeChatId);$("activeName").textContent=c?displayName(c):tr("chooseChatName");$("activeId").textContent=tr("chatId")+activeChatId;updatePageTitle();$("messageText").disabled=false;$("sendBtn").disabled=false;$("attachBtn").disabled=false;$("voiceBtn").disabled=false;$("clearChatBtn").disabled=false;renderChats();updateDetailsPanel();await Promise.all([loadMessages({force:true}),refreshPinnedMessage()]);}
 async function refreshAll(){if($("dashboard").hidden)return;if(busy){refreshQueued=true;return;}busy=true;try{await loadChats({detect:true});await loadMessages();}catch(e){if(!e.message.includes("Войди"))toast(e.message);}finally{busy=false;if(refreshQueued&&!$("dashboard").hidden){refreshQueued=false;queueMicrotask(()=>refreshAll());}}}
 $("loginForm").addEventListener("submit",async e=>{
  e.preventDefault();$("loginBtn").disabled=true;$("loginError").textContent="";
