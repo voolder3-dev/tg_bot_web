@@ -500,7 +500,7 @@ app.post("/api/pin-message", requireAdmin, async (req, res) => {
 app.post("/api/unpin-message", requireAdmin, async (req, res) => {
   const chatId = String(req.body?.chat_id || "");
   const messageId = req.body?.message_id ? Number(req.body.message_id) : undefined;
-  if (!/^-?\\d+$/.test(chatId) || (messageId !== undefined && (!Number.isSafeInteger(messageId) || messageId < 1))) return res.status(400).json({ ok: false, error: "Проверь Chat ID и ID сообщения." });
+  if (!/^-?\d+$/.test(chatId) || (messageId !== undefined && (!Number.isSafeInteger(messageId) || messageId < 1))) return res.status(400).json({ ok: false, error: "Проверь Chat ID и ID сообщения." });
   try {
     const payload = { chat_id: chatId };
     if (messageId) payload.message_id = messageId;
@@ -511,7 +511,7 @@ app.post("/api/unpin-message", requireAdmin, async (req, res) => {
 
 app.get("/api/chats/:chatId/pinned", requireAdmin, async (req, res) => {
   const chatId = req.params.chatId;
-  if (!/^-?\\d+$/.test(chatId)) return res.status(400).json({ ok: false, error: "Некорректный Chat ID." });
+  if (!/^-?\d+$/.test(chatId)) return res.status(400).json({ ok: false, error: "Некорректный Chat ID." });
   try {
     const chat = await telegram("getChat", { chat_id: chatId });
     res.json({ ok: true, pinned_message: chat.pinned_message || null });
@@ -521,7 +521,7 @@ app.get("/api/chats/:chatId/pinned", requireAdmin, async (req, res) => {
 app.delete("/api/chats/:chatId/messages/:messageId", requireAdmin, async (req, res) => {
   const chatId = req.params.chatId;
   const localId = req.params.messageId;
-  if (!/^-?\\d+$/.test(chatId) || !/^\\d+$/.test(localId)) return res.status(400).json({ ok: false, error: "Некорректный ID сообщения." });
+  if (!/^-?\d+$/.test(chatId) || !/^\d+$/.test(localId)) return res.status(400).json({ ok: false, error: "Некорректный ID сообщения." });
   try {
     const found = await pool.query("SELECT telegram_message_id FROM messages WHERE id = $1 AND chat_id = $2", [localId, chatId]);
     if (!found.rows.length) return res.status(404).json({ ok: false, error: "Сообщение уже удалено или не найдено." });
