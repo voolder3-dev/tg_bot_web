@@ -206,7 +206,7 @@ body{background-image:radial-gradient(ellipse at 8% 4%,color-mix(in srgb,var(--p
     <div class="search"><input id="searchInput" type="search" placeholder="Поиск по имени или ID…" data-i18n-placeholder="searchPlaceholder"></div>
     <div class="chat-list" id="chatList"><div class="empty" data-i18n="emptyChats">После подключения здесь появятся чаты.</div></div>
   </section>
-  <section class="panel conversation">
+  <section class="panel conversation" id="conversation">
     <div class="conversation-head"><div><div class="person" id="activeName" data-i18n="chooseChat">Выбери чат</div><div class="muted" id="activeId" data-i18n="conversationHere">Переписка появится здесь</div></div><div class="conversation-actions"><button class="btn danger" id="clearChatBtn" type="button" disabled data-i18n="clearChat">Очистить чат</button><button class="btn secondary" id="refreshBtn" type="button" data-i18n="refresh">Обновить</button></div></div>
     <div class="conversation-body"><div class="conversation-tabs"><button class="conversation-tab active" id="chatTabBtn" type="button">💬 Чат</button><button class="conversation-tab" id="mediaTabBtn" type="button">▦ Медиа</button></div>
     <div class="messages" id="messages"><div class="empty" data-i18n="noChatSelected">📭<br>Пока чат не выбран.</div></div>
@@ -689,7 +689,7 @@ function acceptDroppedFile(file){
 $("mediaInput").addEventListener("change",()=>{const file=$("mediaInput").files[0];$("fileStatus").textContent=file?file.name+" · "+(file.size/1024/1024).toFixed(1)+" MB":"";});
 let dragDepth=0;
 const dropSurface=$("conversation");
-dropSurface.addEventListener("dragenter",e=>{if(!e.dataTransfer?.types?.includes("Files")||!activeChatId)return;e.preventDefault();dragDepth++;$("dropOverlay").classList.add("show");});
+dropSurface.addEventListener("dragenter",e=>{if(!Array.from(e.dataTransfer?.types||[]).includes("Files")||!activeChatId)return;e.preventDefault();dragDepth++;$("dropOverlay").classList.add("show");});
 dropSurface.addEventListener("dragover",e=>{if(e.dataTransfer?.types?.includes("Files")&&activeChatId){e.preventDefault();e.dataTransfer.dropEffect="copy";}});
 dropSurface.addEventListener("dragleave",e=>{if(!e.dataTransfer?.types?.includes("Files"))return;dragDepth=Math.max(0,dragDepth-1);if(!dragDepth)$("dropOverlay").classList.remove("show");});
 dropSurface.addEventListener("drop",e=>{
