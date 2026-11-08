@@ -90,7 +90,7 @@ function extractMedia(message) {
   const fields = [
     ["video", "video", "video/mp4"],
     ["animation", "animation", "video/mp4"],
-    ["sticker", message.sticker?.is_video ? "video_sticker" : "sticker", message.sticker?.is_video ? "video/webm" : (message.sticker?.is_animated ? "image/jpeg" : "image/webp")],
+    ["sticker", "sticker", "image/webp"],
     ["document", "document", message.document?.mime_type || "application/octet-stream"],
     ["audio", "audio", message.audio?.mime_type || "audio/mpeg"],
     ["voice", "voice", "audio/ogg; codecs=opus"],
@@ -103,10 +103,10 @@ function extractMedia(message) {
       if (type === "document" && item.mime_type?.startsWith("image/")) mediaType = "photo";
       else if (type === "document" && item.mime_type?.startsWith("video/")) mediaType = "video";
       return {
-        fileId: field === "sticker" && item.is_animated && item.thumbnail?.file_id ? item.thumbnail.file_id : item.file_id,
+        fileId: field === "sticker" && (item.is_animated || item.is_video) && item.thumbnail?.file_id ? item.thumbnail.file_id : item.file_id,
         stickerFileId: field === "sticker" ? item.file_id : null,
         type: mediaType,
-        mime: field === "sticker" && item.is_animated && item.thumbnail?.file_id ? "image/jpeg" : (item.mime_type || fallbackMime),
+        mime: field === "sticker" && (item.is_animated || item.is_video) && item.thumbnail?.file_id ? "image/jpeg" : (item.is_video ? "video/webm" : (item.mime_type || fallbackMime)),
         name: item.file_name || null
       };
     }
@@ -589,9 +589,10 @@ app.post("/api/send-sticker", requireAdmin, async (req, res) => {
       [String(chat.id), chat.type || "private", chat.title || null, chat.username || null, chat.first_name || null, chat.last_name || null]
     );
     await pool.query(
-      `INSERT INTO messages (chat_id, telegram_message_id, direction, text, sender_name, media_file_id, media_type, media_mime_type, created_at)
-       VALUES ($1,$2,'outgoing','[Стикер]','Вы',$3,'sticker','image/webp',NOW()) ON CONFLICT DO NOTHING`,
-      [String(chat.id), sent.message_id, sent.sticker?.file_id || fileId]
+      `INSERT INTO messages (chat_id, telegram_message_id, direction, text, sender_name, media_file_id, media_type, media_mime_type, sticker_file_id, created_at)
+       VALUES ($1,$2,'outgoing','[Стикер]','Вы',$3,'sticker',$4,$5,NOW()) ON CONFLICT DO NOTHING`,
+      [String(chat.id), sent.message_id, sent.sticker?.thumbnail?.file_id || sent.sticker?.file_id || fileId,
+       sent.sticker?.thumbnail?.file_id ? "image/jpeg" : "image/webp", sent.sticker?.file_id || fileId]
     );
     res.json({ ok: true, message_id: sent.message_id });
   } catch (error) {
