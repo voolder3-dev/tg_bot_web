@@ -90,7 +90,7 @@ function extractMedia(message) {
   const fields = [
     ["video", "video", "video/mp4"],
     ["animation", "animation", "video/mp4"],
-    ["sticker", message.sticker?.is_video ? "video_sticker" : "sticker", message.sticker?.is_video ? "video/webm" : "image/webp"],
+    ["sticker", message.sticker?.is_video ? "video_sticker" : "sticker", message.sticker?.is_video ? "video/webm" : (message.sticker?.is_animated ? "image/jpeg" : "image/webp")],
     ["document", "document", message.document?.mime_type || "application/octet-stream"],
     ["audio", "audio", message.audio?.mime_type || "audio/mpeg"],
     ["voice", "voice", "audio/ogg; codecs=opus"],
@@ -103,9 +103,10 @@ function extractMedia(message) {
       if (type === "document" && item.mime_type?.startsWith("image/")) mediaType = "photo";
       else if (type === "document" && item.mime_type?.startsWith("video/")) mediaType = "video";
       return {
-        fileId: item.file_id,
+        fileId: field === "sticker" && item.is_animated && item.thumbnail?.file_id ? item.thumbnail.file_id : item.file_id,
+        stickerFileId: field === "sticker" ? item.file_id : null,
         type: mediaType,
-        mime: item.mime_type || fallbackMime,
+        mime: field === "sticker" && item.is_animated && item.thumbnail?.file_id ? "image/jpeg" : (item.mime_type || fallbackMime),
         name: item.file_name || null
       };
     }
@@ -163,6 +164,7 @@ async function initDatabase() {
       media_type TEXT,
       media_mime_type TEXT,
       media_file_name TEXT,
+      sticker_file_id TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
@@ -171,6 +173,7 @@ async function initDatabase() {
     ALTER TABLE messages ADD COLUMN IF NOT EXISTS media_type TEXT;
     ALTER TABLE messages ADD COLUMN IF NOT EXISTS media_mime_type TEXT;
     ALTER TABLE messages ADD COLUMN IF NOT EXISTS media_file_name TEXT;
+    ALTER TABLE messages ADD COLUMN IF NOT EXISTS sticker_file_id TEXT;
     ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to_message_id BIGINT;
 
     CREATE INDEX IF NOT EXISTS messages_chat_created_idx
@@ -226,13 +229,13 @@ app.post("/telegram/webhook", async (req, res) => {
 
     await pool.query(
       `INSERT INTO messages
-       (chat_id, telegram_message_id, direction, text, sender_name, media_file_id, media_type, media_mime_type, media_file_name, reply_to_message_id, created_at)
-       VALUES ($1, $2, 'incoming', $3, $4, $5, $6, $7, $8, $9, to_timestamp($10))
+       (chat_id, telegram_message_id, direction, text, sender_name, media_file_id, media_type, media_mime_type, media_file_name, sticker_file_id, reply_to_message_id, created_at)
+       VALUES ($1, $2, 'incoming', $3, $4, $5, $6, $7, $8, $9, $10, to_timestamp($11))
        ON CONFLICT DO NOTHING`,
       [
         String(chat.id), message.message_id || null, String(textValue).slice(0, 4096),
         [from.first_name, from.last_name].filter(Boolean).join(" ") || from.username || null,
-        media?.fileId || null, media?.type || null, media?.mime || null, media?.name || null,
+        media?.fileId || null, media?.type || null, media?.mime || null, media?.name || null, media?.stickerFileId || null,
         message.reply_to_message?.message_id || null,
         Number(message.date) || Math.floor(Date.now() / 1000)
       ]
@@ -262,6 +265,29 @@ app.get("/api/chats", requireAdmin, async (_req, res) => {
   } catch (error) {
     console.error("Chats query failed:", error.message);
     res.status(500).json({ ok: false, error: "Не удалось загрузить список чатов." });
+  }
+});
+
+app.get("/api/chats/:chatId/avatar", requireAdmin, async (req, res) => {
+  const chatId = req.params.chatId;
+  if (!/^-?\\d+$/.test(chatId)) return res.status(400).json({ ok: false, error: "Некорректный Chat ID." });
+  try {
+    const chat = await telegram("getChat", { chat_id: chatId });
+    const fileId = chat.photo?.small_file_id || chat.photo?.big_file_id;
+    if (!fileId) return res.sendStatus(404);
+    const fileInfo = await telegram("getFile", { file_id: fileId });
+    if (!fileInfo.file_path) return res.sendStatus(404);
+    const fileResponse = await fetch(`https://api.telegram.org/file/bot${BOT_TOKEN}/${fileInfo.file_path}`);
+    if (!fileResponse.ok) throw new Error("Telegram avatar HTTP " + fileResponse.status);
+    const buffer = Buffer.from(await fileResponse.arrayBuffer());
+    if (!buffer.length) return res.sendStatus(404);
+    res.setHeader("Content-Type", fileResponse.headers.get("content-type") || "image/jpeg");
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    res.setHeader("Content-Length", String(buffer.length));
+    res.end(buffer);
+  } catch (error) {
+    console.warn("Chat avatar unavailable:", error.message);
+    res.sendStatus(404);
   }
 });
 
@@ -508,9 +534,10 @@ app.post("/api/send", requireAdmin, async (req, res) => {
 app.get("/api/stickers", requireAdmin, async (_req, res) => {
   try {
     const result = await pool.query(
-      `SELECT DISTINCT ON (media_file_id) id::text AS id, media_file_id, text, created_at
-       FROM messages WHERE media_type = 'sticker' AND media_file_id IS NOT NULL
-       ORDER BY media_file_id, created_at DESC LIMIT 60`
+      `SELECT DISTINCT ON (COALESCE(sticker_file_id, media_file_id)) id::text AS id, media_file_id,
+         COALESCE(sticker_file_id, media_file_id) AS sticker_file_id, text, created_at
+       FROM messages WHERE media_type IN ('sticker','video_sticker') AND media_file_id IS NOT NULL
+       ORDER BY COALESCE(sticker_file_id, media_file_id), created_at DESC LIMIT 60`
     );
     res.json({ ok: true, stickers: result.rows });
   } catch (error) {
@@ -533,13 +560,14 @@ app.post("/api/chat-action", requireAdmin, async (req, res) => {
 app.post("/api/react-message", requireAdmin, async (req, res) => {
   const chatId = String(req.body?.chat_id || "");
   const messageId = Number(req.body?.message_id);
-  const emoji = String(req.body?.emoji || "");
+  const emoji = typeof req.body?.emoji === "string" ? req.body.emoji : "";
   const allowed = ["👍","👎","❤","🔥","🎉","😁","😢","🤔","👏","💯"];
-  if (!/^-?\d+$/.test(chatId) || !Number.isSafeInteger(messageId) || messageId < 1 || !allowed.includes(emoji)) {
+  const remove = req.body?.remove === true;
+  if (!/^-?\d+$/.test(chatId) || !Number.isSafeInteger(messageId) || messageId < 1 || (!remove && !allowed.includes(emoji))) {
     return res.status(400).json({ ok: false, error: "Проверь сообщение и выбранную реакцию." });
   }
   try {
-    await telegram("setMessageReaction", { chat_id: chatId, message_id: messageId, reaction: [{ type: "emoji", emoji }] });
+    await telegram("setMessageReaction", { chat_id: chatId, message_id: messageId, reaction: remove ? [] : [{ type: "emoji", emoji }] });
     res.json({ ok: true });
   } catch (error) {
     res.status(error.status || 502).json({ ok: false, error: error.message || "Telegram не разрешил поставить реакцию." });
