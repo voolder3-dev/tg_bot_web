@@ -737,7 +737,7 @@ async function renderMessages(ms){
  if(wasAtBottom)box.scrollTop=box.scrollHeight;else box.scrollTop=oldTop;
  if(currentConversationTab==="media")renderMediaGallery();
 }
-async function loadChats({detect=false}={}){const d=await api("/api/chats");chats=d.chats||[];if(detect)checkForNewMessages(chats);else{knownIncomingMessages=new Map(chats.map(c=>[String(c.chat_id),c.last_message_id==null?null:String(c.last_message_id)]));}renderChats();}
+async function loadChats({detect=false}={}){const d=await api("/api/chats");chats=d.chats||[];if(detect)checkForNewMessages(chats);else{knownIncomingMessages=new Map(chats.map(c=>[String(c.chat_id),c.last_message_id==null?null:String(c.last_message_id)]));}const composer=$("messageText");const userIsTyping=composer&&document.activeElement===composer&&composer.value.length>0;if(!userIsTyping)renderChats();}
 async function loadMessages({force=false}={}){
  if(!activeChatId)return;
  const d=await api("/api/chats/"+encodeURIComponent(activeChatId)+"/messages");
