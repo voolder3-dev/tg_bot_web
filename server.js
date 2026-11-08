@@ -169,6 +169,7 @@ async function initDatabase() {
     ALTER TABLE messages ADD COLUMN IF NOT EXISTS media_type TEXT;
     ALTER TABLE messages ADD COLUMN IF NOT EXISTS media_mime_type TEXT;
     ALTER TABLE messages ADD COLUMN IF NOT EXISTS media_file_name TEXT;
+    ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to_message_id BIGINT;
 
     CREATE INDEX IF NOT EXISTS messages_chat_created_idx
       ON messages(chat_id, created_at DESC);
@@ -223,7 +224,7 @@ app.post("/telegram/webhook", async (req, res) => {
 
     await pool.query(
       `INSERT INTO messages
-       (chat_id, telegram_message_id, direction, text, sender_name, media_file_id, media_type, media_mime_type, media_file_name, created_at)
+       (chat_id, telegram_message_id, direction, text, sender_name, media_file_id, media_type, media_mime_type, media_file_name, reply_to_message_id, created_at)
        VALUES ($1, $2, 'incoming', $3, $4, $5, $6, $7, $8, to_timestamp($9))
        ON CONFLICT DO NOTHING`,
       [
@@ -434,12 +435,15 @@ app.post("/api/send-voice", requireAdmin, upload.single("voice"), async (req, re
 app.post("/api/send", requireAdmin, async (req, res) => {
   const chatId = String(req.body?.chat_id || "");
   const messageText = typeof req.body?.text === "string" ? req.body.text.trim() : "";
+  const replyTo = req.body?.reply_to_message_id ? Number(req.body.reply_to_message_id) : null;
   if (!/^-?\d+$/.test(chatId) || !messageText || messageText.length > 4096) {
     return res.status(400).json({ ok: false, error: "Проверь Chat ID и текст (до 4096 символов)." });
   }
 
   try {
-    const sent = await telegram("sendMessage", { chat_id: chatId, text: messageText });
+    const payload = { chat_id: chatId, text: messageText };
+    if (replyTo) payload.reply_parameters = { message_id: replyTo, allow_sending_without_reply: true };
+    const sent = await telegram("sendMessage", payload);
     const chat = sent.chat;
     await pool.query(
       `INSERT INTO chats (chat_id, chat_type, title, username, first_name, last_name, last_message_at)
@@ -451,14 +455,25 @@ app.post("/api/send", requireAdmin, async (req, res) => {
       ]
     );
     await pool.query(
-      `INSERT INTO messages (chat_id, telegram_message_id, direction, text, sender_name, created_at)
-       VALUES ($1, $2, 'outgoing', $3, 'Вы', NOW()) ON CONFLICT DO NOTHING`,
-      [String(chat.id), sent.message_id, messageText]
+      `INSERT INTO messages (chat_id, telegram_message_id, direction, text, sender_name, reply_to_message_id, created_at)
+       VALUES ($1, $2, 'outgoing', $3, 'Вы', $4, NOW()) ON CONFLICT DO NOTHING`,
+      [String(chat.id), sent.message_id, messageText, replyTo]
     );
     res.json({ ok: true, message_id: sent.message_id });
   } catch (error) {
     res.status(error.status || 502).json({ ok: false, error: error.message || "Не удалось отправить сообщение." });
   }
+});
+
+
+app.post("/api/pin-message", requireAdmin, async (req, res) => {
+  const chatId = String(req.body?.chat_id || "");
+  const messageId = Number(req.body?.message_id);
+  if (!/^-?\\d+$/.test(chatId) || !Number.isSafeInteger(messageId) || messageId < 1) return res.status(400).json({ ok: false, error: "Проверь Chat ID и ID сообщения." });
+  try {
+    const result = await telegram("pinChatMessage", { chat_id: chatId, message_id: messageId, disable_notification: true });
+    res.json({ ok: true, result });
+  } catch (error) { res.status(error.status || 502).json({ ok: false, error: error.message || "Не удалось закрепить сообщение." }); }
 });
 
 app.post("/api/webhook/register", requireAdmin, async (req, res) => {
