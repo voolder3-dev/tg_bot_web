@@ -519,6 +519,33 @@ app.get("/api/stickers", requireAdmin, async (_req, res) => {
   }
 });
 
+app.post("/api/chat-action", requireAdmin, async (req, res) => {
+  const chatId = String(req.body?.chat_id || "");
+  if (!/^-?\d+$/.test(chatId)) return res.status(400).json({ ok: false, error: "Некорректный Chat ID." });
+  try {
+    await telegram("sendChatAction", { chat_id: chatId, action: "typing" });
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(error.status || 502).json({ ok: false, error: error.message || "Не удалось показать индикатор набора." });
+  }
+});
+
+app.post("/api/react-message", requireAdmin, async (req, res) => {
+  const chatId = String(req.body?.chat_id || "");
+  const messageId = Number(req.body?.message_id);
+  const emoji = String(req.body?.emoji || "");
+  const allowed = ["👍","👎","❤","🔥","🎉","😁","😢","🤔","👏","💯"];
+  if (!/^-?\d+$/.test(chatId) || !Number.isSafeInteger(messageId) || messageId < 1 || !allowed.includes(emoji)) {
+    return res.status(400).json({ ok: false, error: "Проверь сообщение и выбранную реакцию." });
+  }
+  try {
+    await telegram("setMessageReaction", { chat_id: chatId, message_id: messageId, reaction: [{ type: "emoji", emoji }] });
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(error.status || 502).json({ ok: false, error: error.message || "Telegram не разрешил поставить реакцию." });
+  }
+});
+
 app.post("/api/send-sticker", requireAdmin, async (req, res) => {
   const chatId = String(req.body?.chat_id || "");
   const fileId = typeof req.body?.file_id === "string" ? req.body.file_id : "";
