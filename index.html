@@ -15,7 +15,7 @@ h2{font-size:clamp(22px,4vw,30px);margin:0 0 7px;letter-spacing:-.8px}.sub{font-
 .layout{display:grid;grid-template-columns:340px minmax(0,1fr);gap:16px;min-height:600px}.panel{min-width:0;background:#111522eF;border:1px solid var(--border);border-radius:18px;overflow:hidden}.panel-head{height:62px;padding:0 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}.panel-head h3{font-size:14px;margin:0}.muted{color:var(--muted);font-size:11px}
 .search{padding:12px 14px;border-bottom:1px solid var(--border)}.search input{width:100%;border:1px solid var(--border);background:#0b0f1b;border-radius:10px;padding:10px 12px;color:var(--text);outline:none}
 .chat-list{max-height:560px;overflow:auto}.chat{display:flex;align-items:center;gap:12px;padding:14px;border-bottom:1px solid #ffffff09;cursor:pointer;transition:.15s}.chat:hover{background:#ffffff08}.chat.active{background:#8b5cf61b;border-left:3px solid var(--purple);padding-left:11px}.avatar{width:40px;height:40px;flex:0 0 40px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#5534a0,#187ba4);font-weight:700}.chat-info{min-width:0;flex:1}.chat-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chat-preview{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:5px}.chat-id{font-size:10px;color:#68728b;margin-top:4px}.empty{padding:35px 20px;text-align:center;color:var(--muted);font-size:12px;line-height:1.7}
-.conversation{display:flex;flex-direction:column;height:min(780px,calc(100vh - 150px));min-height:620px;min-width:0}.conversation-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.btn.danger{background:#a83246;color:#fff}.btn.danger:hover{background:#c43c53}.btn.danger:disabled{opacity:.4;cursor:not-allowed}.conversation-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px}.person{font-size:14px;font-weight:700}.messages{padding:18px;flex:1;min-height:350px;max-height:500px;overflow:auto;display:flex;flex-direction:column;gap:10px;background:radial-gradient(ellipse at center,#8b5cf608,transparent 70%)}.bubble{max-width:min(78%,560px);padding:11px 13px;border-radius:14px;background:#1a2031;border:1px solid var(--border);font-size:13px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;align-self:flex-start}.bubble.outgoing{align-self:flex-end;background:#49318b88;border-color:#8b5cf655}.bubble time{display:block;text-align:right;color:#aab2c7;font-size:9px;margin-top:6px}.composer{padding:14px;border-top:1px solid var(--border);display:flex;gap:10px}.composer textarea{min-height:46px;max-height:130px;resize:vertical;flex:1}
+.conversation{display:flex;flex-direction:column;height:min(780px,calc(100vh - 150px));min-height:620px;min-width:0}.conversation-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.btn.danger{background:#a83246;color:#fff}.btn.danger:hover{background:#c43c53}.btn.danger:disabled{opacity:.4;cursor:not-allowed}.conversation-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px}.person{font-size:14px;font-weight:700}.messages{padding:18px;flex:1;min-height:350px;max-height:500px;overflow:auto;display:flex;flex-direction:column;gap:10px;background:radial-gradient(ellipse at center,#8b5cf608,transparent 70%)}.bubble{max-width:min(78%,560px);padding:11px 13px;border-radius:14px;background:#1a2031;border:1px solid var(--border);font-size:13px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;align-self:flex-start}.bubble.outgoing{align-self:flex-end;background:#49318b88;border-color:#8b5cf655}.bubble time{display:block;text-align:right;color:#aab2c7;font-size:9px;margin-top:6px}.message-status{display:inline-block;margin-left:3px;color:var(--blue);font-size:11px;font-weight:800}.message-status.sending{color:var(--muted);animation:sendClockPulse 1.1s ease-in-out infinite}.bubble.optimistic-send{animation:sendBubbleFly .38s cubic-bezier(.18,.82,.25,1) both;transform-origin:bottom right}@keyframes sendBubbleFly{0%{opacity:0;transform:translate3d(95px,115px,0) scale(.62);filter:blur(2px)}72%{opacity:1;transform:translate3d(-4px,-2px,0) scale(1.025);filter:blur(0)}100%{opacity:1;transform:translate3d(0,0,0) scale(1)}}@keyframes sendClockPulse{50%{opacity:.45}}.composer{padding:14px;border-top:1px solid var(--border);display:flex;gap:10px}.composer textarea{min-height:46px;max-height:130px;resize:vertical;flex:1}
 .composer{align-items:flex-end;flex-wrap:wrap}
 .attach-btn{width:46px;height:46px;flex:0 0 46px;border:1px solid var(--border);border-radius:11px;background:#ffffff0a;color:var(--text);font-size:21px;cursor:pointer}
 .attach-btn:hover{border-color:var(--purple);background:#8b5cf622}
@@ -135,8 +135,6 @@ body,body *{transition:background-color .24s ease,border-color .24s ease,color .
 .bubble.outgoing.message-enter{animation:messageArriveOutgoing .28s cubic-bezier(.2,.75,.3,1) both}
 @keyframes messageArriveIncoming{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
 @keyframes messageArriveOutgoing{from{opacity:0;transform:translate(10px,5px) scale(.98)}to{opacity:1;transform:translate(0,0) scale(1)}}
-.conversation-body.chat-opening{animation:chatOpening .24s ease-out both}
-@keyframes chatOpening{from{opacity:.65;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 @keyframes messageArriveIncoming{0%{opacity:0;transform:translate3d(-12px,12px,0) scale(.94);filter:blur(3px)}65%{opacity:1;transform:translate3d(2px,-1px,0) scale(1.015);filter:blur(0)}100%{opacity:1;transform:translate3d(0,0,0) scale(1)}}
 @keyframes messageArriveOutgoing{0%{opacity:0;transform:translate3d(14px,12px,0) scale(.92);filter:blur(3px);box-shadow:0 0 0 transparent}65%{opacity:1;transform:translate3d(-2px,-1px,0) scale(1.025);filter:blur(0);box-shadow:0 0 24px color-mix(in srgb,var(--purple) 22%,transparent)}100%{opacity:1;transform:translate3d(0,0,0) scale(1);box-shadow:0 0 0 transparent}}
 .chat.active .avatar{box-shadow:0 0 0 3px color-mix(in srgb,var(--purple) 20%,transparent),0 0 20px color-mix(in srgb,var(--purple) 25%,transparent)}
@@ -790,7 +788,7 @@ async function renderMessages(ms,{animateNew=true}={}){
   mediaObserver=new IntersectionObserver(entries=>{entries.forEach(entry=>{if(!entry.isIntersecting)return;mediaObserver.unobserve(entry.target);if(entry.target._mediaLoadTask)entry.target._mediaLoadTask();});},{root:box,rootMargin:"350px 0px"});
  }
  ms.forEach(m=>{
-  const b=document.createElement("div");b.className="bubble "+(m.direction==="outgoing"?"outgoing":"incoming");if(animateNew&&!previousMessageIds.has(String(m.id)))b.classList.add("message-enter");b.dataset.messageId=m.id;
+  const b=document.createElement("div");b.className="bubble "+(m.direction==="outgoing"?"outgoing":"incoming");if(animateNew&&m.direction!=="outgoing"&&!previousMessageIds.has(String(m.id)))b.classList.add("message-enter");b.dataset.messageId=m.id;
   if(m.reply_to_message_id){const quote=document.createElement("div");quote.className="media-loading";const original=ms.find(item=>String(item.telegram_message_id)===String(m.reply_to_message_id));quote.textContent="↪ "+(original?.text||"Ответ на сообщение");b.append(quote);}
   if(m.media_type&&m.id){
    const loading=document.createElement("div");loading.className="media-loading";loading.textContent=currentLang==="ru"?"Медиа загрузится при прокрутке сюда…":"Media will load as you scroll here…";b.append(loading);
@@ -799,7 +797,7 @@ async function renderMessages(ms,{animateNew=true}={}){
   const body=document.createElement("div");body.className=m.media_type?"media-caption":"";body.textContent=m.text||"";
   if(body.textContent)b.append(body);
   b.addEventListener("contextmenu",event=>{event.preventDefault();openMessageMenu(m,event.clientX,event.clientY);});let pointerStart=null;b.addEventListener("pointerdown",event=>{if(event.pointerType!=="touch"||event.button!==0||event.target.closest("button,input,video,a,audio"))return;pointerStart={x:event.clientX,y:event.clientY};try{b.setPointerCapture(event.pointerId);}catch(_){}});b.addEventListener("pointerup",event=>{if(!pointerStart)return;const dx=event.clientX-pointerStart.x,dy=event.clientY-pointerStart.y;pointerStart=null;if(dx>65&&Math.abs(dx)>Math.abs(dy)*1.25){b.classList.add("swipe-reply");setTimeout(()=>b.classList.remove("swipe-reply"),220);setReplyTarget(m);}});b.addEventListener("pointercancel",()=>{pointerStart=null;});
-  const t=document.createElement("time");t.textContent=new Date(m.created_at).toLocaleString(currentLang==="ru"?"ru-RU":"en-GB",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});b.append(t);box.append(b);
+  const t=document.createElement("time");t.textContent=new Date(m.created_at).toLocaleString(currentLang==="ru"?"ru-RU":"en-GB",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});if(m.direction==="outgoing"){const status=document.createElement("span");status.className="message-status";status.textContent="✓";status.title=currentLang==="ru"?"Отправлено":"Sent";t.append(" ",status);}b.append(t);box.append(b);
  });
  if(wasAtBottom)box.scrollTop=box.scrollHeight;else box.scrollTop=oldTop;
  if(currentConversationTab==="media")renderMediaGallery();
@@ -814,7 +812,7 @@ async function loadMessages({force=false}={}){
  if(!force&&activeAudio){pendingMessages=next;return;}
  pendingMessages=null;await renderMessages(next,{animateNew:!force});
 }
-async function selectChat(id){if(String(id)!==String(activeChatId))playChatOpenSound();const conversationBody=$("messages").parentElement;if(conversationBody){conversationBody.classList.remove("chat-opening");void conversationBody.offsetWidth;conversationBody.classList.add("chat-opening");}activeChatId=String(id);currentMessages=[];pendingMessages=null;pinnedMessage=null;setReplyTarget(null);setConversationTab("chat");const c=chats.find(x=>String(x.chat_id)===activeChatId);$("activeName").textContent=c?displayName(c):tr("chooseChatName");$("activeId").textContent=tr("chatId")+activeChatId;updatePageTitle();$("messageText").disabled=false;$("sendBtn").disabled=false;$("attachBtn").disabled=false;$("voiceBtn").disabled=false;$("clearChatBtn").disabled=false;renderChats();updateDetailsPanel();await Promise.all([loadMessages({force:true}),refreshPinnedMessage()]);}
+async function selectChat(id){if(String(id)!==String(activeChatId))playChatOpenSound();activeChatId=String(id);currentMessages=[];pendingMessages=null;pinnedMessage=null;setReplyTarget(null);setConversationTab("chat");const c=chats.find(x=>String(x.chat_id)===activeChatId);$("activeName").textContent=c?displayName(c):tr("chooseChatName");$("activeId").textContent=tr("chatId")+activeChatId;updatePageTitle();$("messageText").disabled=false;$("sendBtn").disabled=false;$("attachBtn").disabled=false;$("voiceBtn").disabled=false;$("clearChatBtn").disabled=false;renderChats();updateDetailsPanel();await Promise.all([loadMessages({force:true}),refreshPinnedMessage()]);}
 async function refreshAll(){if($("dashboard").hidden)return;if(busy){refreshQueued=true;return;}busy=true;try{await loadChats({detect:true});await loadMessages();}catch(e){if(!e.message.includes("Войди"))toast(e.message);}finally{busy=false;if(refreshQueued&&!$("dashboard").hidden){refreshQueued=false;queueMicrotask(()=>refreshAll());}}}
 $("loginForm").addEventListener("submit",async e=>{
  e.preventDefault();$("loginBtn").disabled=true;$("loginError").textContent="";
@@ -980,6 +978,15 @@ $("clearChatBtn").addEventListener("click",async()=>{
 $("searchInput").addEventListener("input",renderChats);$("refreshBtn").addEventListener("click",async()=>{await refreshAll();await refreshPinnedMessage();});
 $("chatTabBtn").addEventListener("click",()=>setConversationTab("chat"));$("mediaTabBtn").addEventListener("click",()=>setConversationTab("media"));$("cancelReplyBtn").addEventListener("click",()=>setReplyTarget(null));
 $("messages").addEventListener("ended",()=>{if(pendingMessages){const next=pendingMessages;pendingMessages=null;renderMessages(next);}},true);
+function addOptimisticMessage(text){
+ const box=$("messages"),bubble=document.createElement("div");
+ bubble.className="bubble outgoing optimistic-send";
+ const body=document.createElement("div");body.textContent=text;bubble.append(body);
+ const time=document.createElement("time");time.textContent=new Date().toLocaleTimeString(currentLang==="ru"?"ru-RU":"en-GB",{hour:"2-digit",minute:"2-digit"});
+ const status=document.createElement("span");status.className="message-status sending";status.textContent="◷";status.title=currentLang==="ru"?"Отправляется":"Sending";
+ time.append(" ",status);bubble.append(time);box.append(bubble);box.scrollTop=box.scrollHeight;
+ return {bubble,status};
+}
 $("sendForm").addEventListener("submit",async e=>{
  e.preventDefault();if(!activeChatId)return;
  const message=$("messageText").value.trim(),file=$("mediaInput").files[0];
@@ -996,9 +1003,13 @@ $("sendForm").addEventListener("submit",async e=>{
    $("mediaInput").value="";$("fileStatus").textContent="";$("messageText").value="";
    await refreshAll();toast(tr("fileSent"));
   }else{
-   await api("/api/send",{method:"POST",body:JSON.stringify({chat_id:activeChatId,text:message,reply_to_message_id:replyTarget?.telegram_message_id||null})});
-   playSendSound();
-   $("messageText").value="";setReplyTarget(null);$("sendProgress").textContent="";await refreshAll();toast(tr("sent"));
+   const optimistic=addOptimisticMessage(message);
+   try{
+    await api("/api/send",{method:"POST",body:JSON.stringify({chat_id:activeChatId,text:message,reply_to_message_id:replyTarget?.telegram_message_id||null})});
+    optimistic.status.classList.remove("sending");optimistic.status.textContent="✓";optimistic.status.title=currentLang==="ru"?"Отправлено":"Sent";
+    playSendSound();
+    $("messageText").value="";setReplyTarget(null);$("sendProgress").textContent="";await refreshAll();toast(tr("sent"));
+   }catch(sendError){optimistic.bubble.remove();throw sendError;}
   }
  }catch(err){toast(err.message);}
  finally{$("sendBtn").disabled=!activeChatId;$("attachBtn").disabled=!activeChatId;$("voiceBtn").disabled=!activeChatId;$("sendProgress").textContent="";}
