@@ -200,6 +200,7 @@ async function initDatabase() {
       pack_id BIGINT NOT NULL REFERENCES sticker_packs(id) ON DELETE CASCADE,
       file_id TEXT NOT NULL,
       preview_file_id TEXT,
+      preview_mime_type TEXT,
       media_type TEXT NOT NULL,
       mime_type TEXT NOT NULL,
       emoji TEXT,
@@ -605,7 +606,7 @@ app.get("/api/sticker-packs", requireAdmin, async (_req, res) => {
 
 app.post("/api/sticker-packs/import", requireAdmin, async (req, res) => {
   const input = String(req.body?.link || req.body?.set_name || "").trim();
-  const match = input.match(/(?:https?:\\/\\/)?t\\.me\\/addstickers\\/([A-Za-z0-9_]+)/i) || input.match(/^([A-Za-z][A-Za-z0-9_]{0,63})$/);
+  const match = input.match(/(?:https?:\/\/)?t\.me\/addstickers\/([A-Za-z0-9_]+)/i) || input.match(/^([A-Za-z][A-Za-z0-9_]{0,63})$/);
   if (!match) return res.status(400).json({ ok: false, error: "Вставь ссылку вида https://t.me/addstickers/НазваниеНабора." });
   const setName = match[1];
   try {
@@ -626,12 +627,12 @@ app.post("/api/sticker-packs/import", requireAdmin, async (req, res) => {
       const mediaType = sticker.is_animated ? "animated_sticker" : sticker.is_video ? "video_sticker" : "sticker";
       const mimeType = sticker.is_animated ? "application/x-tgsticker" : sticker.is_video ? "video/webm" : "image/webp";
       await pool.query(
-        `INSERT INTO sticker_pack_items (pack_id, file_id, preview_file_id, media_type, mime_type, emoji, position)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)
+        `INSERT INTO sticker_pack_items (pack_id, file_id, preview_file_id, preview_mime_type, media_type, mime_type, emoji, position)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
          ON CONFLICT (pack_id, file_id) DO UPDATE SET
-           preview_file_id = EXCLUDED.preview_file_id, media_type = EXCLUDED.media_type,
+           preview_file_id = EXCLUDED.preview_file_id, preview_mime_type = EXCLUDED.preview_mime_type, media_type = EXCLUDED.media_type,
            mime_type = EXCLUDED.mime_type, emoji = EXCLUDED.emoji, position = EXCLUDED.position`,
-        [packId, sticker.file_id, sticker.thumbnail?.file_id || (mediaType === "sticker" ? sticker.file_id : null), mediaType, mimeType, sticker.emoji || null, position]
+        [packId, sticker.file_id, sticker.thumbnail?.file_id || (mediaType === "sticker" ? sticker.file_id : null), sticker.thumbnail ? "image/webp" : (mediaType === "sticker" ? "image/webp" : mimeType), mediaType, mimeType, sticker.emoji || null, position]
       );
     }
     const cover = stickerSet.stickers[0];
@@ -662,14 +663,15 @@ app.get("/api/sticker-packs/:packId/stickers", requireAdmin, async (req, res) =>
 app.get("/api/sticker-library/media/:itemId", requireAdmin, async (req, res) => {
   if (!/^\\d+$/.test(req.params.itemId)) return res.status(400).json({ ok: false, error: "Некорректный ID стикера." });
   try {
-    const result = await pool.query("SELECT COALESCE(preview_file_id, file_id) AS file_id, mime_type FROM sticker_pack_items WHERE id = $1", [req.params.itemId]);
+    const result = await pool.query("SELECT COALESCE(preview_file_id, file_id) AS file_id, COALESCE(preview_mime_type, mime_type) AS mime_type FROM sticker_pack_items WHERE id = $1", [req.params.itemId]);
     if (!result.rows.length) return res.status(404).json({ ok: false, error: "Превью стикера не найдено." });
     const fileInfo = await telegram("getFile", { file_id: result.rows[0].file_id });
     const response = await fetch(`https://api.telegram.org/file/bot${BOT_TOKEN}/${fileInfo.file_path}`);
     if (!response.ok) throw new Error("Telegram file HTTP " + response.status);
     const buffer = Buffer.from(await response.arrayBuffer());
     if (!buffer.length) throw new Error("Telegram вернул пустое превью.");
-    res.setHeader("Content-Type", result.rows[0].mime_type === "image/webp" ? "image/webp" : result.rows[0].mime_type);
+    const previewMime = /\\.(?:webp)$/i.test(fileInfo.file_path) ? "image/webp" : /\\.(?:jpe?g)$/i.test(fileInfo.file_path) ? "image/jpeg" : result.rows[0].mime_type;
+    res.setHeader("Content-Type", previewMime);
     res.setHeader("Cache-Control", "private, max-age=3600");
     res.end(buffer);
   } catch (error) {
