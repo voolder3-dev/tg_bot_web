@@ -505,6 +505,45 @@ app.post("/api/send", requireAdmin, async (req, res) => {
 });
 
 
+app.get("/api/stickers", requireAdmin, async (_req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT DISTINCT ON (media_file_id) id::text AS id, media_file_id, text, created_at
+       FROM messages WHERE media_type = 'sticker' AND media_file_id IS NOT NULL
+       ORDER BY media_file_id, created_at DESC LIMIT 60`
+    );
+    res.json({ ok: true, stickers: result.rows });
+  } catch (error) {
+    console.error("Sticker list failed:", error.message);
+    res.status(500).json({ ok: false, error: "Не удалось загрузить недавние стикеры." });
+  }
+});
+
+app.post("/api/send-sticker", requireAdmin, async (req, res) => {
+  const chatId = String(req.body?.chat_id || "");
+  const fileId = typeof req.body?.file_id === "string" ? req.body.file_id : "";
+  if (!/^-?\\d+$/.test(chatId) || !fileId || fileId.length > 512) {
+    return res.status(400).json({ ok: false, error: "Выбери стикер и чат." });
+  }
+  try {
+    const sent = await telegram("sendSticker", { chat_id: chatId, sticker: fileId });
+    const chat = sent.chat;
+    await pool.query(
+      `INSERT INTO chats (chat_id, chat_type, title, username, first_name, last_name, last_message_at)
+       VALUES ($1,$2,$3,$4,$5,$6,NOW()) ON CONFLICT (chat_id) DO UPDATE SET last_message_at=NOW()`,
+      [String(chat.id), chat.type || "private", chat.title || null, chat.username || null, chat.first_name || null, chat.last_name || null]
+    );
+    await pool.query(
+      `INSERT INTO messages (chat_id, telegram_message_id, direction, text, sender_name, media_file_id, media_type, media_mime_type, created_at)
+       VALUES ($1,$2,'outgoing','[Стикер]','Вы',$3,'sticker','image/webp',NOW()) ON CONFLICT DO NOTHING`,
+      [String(chat.id), sent.message_id, sent.sticker?.file_id || fileId]
+    );
+    res.json({ ok: true, message_id: sent.message_id });
+  } catch (error) {
+    res.status(error.status || 502).json({ ok: false, error: error.message || "Не удалось отправить стикер." });
+  }
+});
+
 app.get("/api/search", requireAdmin, async (req, res) => {
   const query = String(req.query.q || "").trim().slice(0, 120);
   if (query.length < 2) return res.json({ ok: true, results: [] });
