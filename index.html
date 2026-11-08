@@ -609,16 +609,16 @@ function saveCurrentDraft(){
  if(value)localStorage.setItem(draftKey(activeChatId),value);else localStorage.removeItem(draftKey(activeChatId));
 }
 function scheduleTypingAction(){
- clearTimeout(typingTimer);if(!activeChatId||!$("messageText").value.trim())return;
+ clearTimeout(typingTimer);if(!activeChatId||!$("messageText").value.trim())return;const targetChatId=String(activeChatId);
  typingTimer=setTimeout(async()=>{
-  if(Date.now()-lastTypingAction<3800)return;
+  if(String(activeChatId)!==targetChatId||Date.now()-lastTypingAction<3800)return;
   lastTypingAction=Date.now();
-  try{await api("/api/chat-action",{method:"POST",body:JSON.stringify({chat_id:activeChatId})});}catch(error){console.debug("Typing status unavailable:",error.message);}
+  try{await api("/api/chat-action",{method:"POST",body:JSON.stringify({chat_id:targetChatId})});}catch(error){console.debug("Typing status unavailable:",error.message);}
  },650);
 }
 function loadLocalChatState(){
  const cfg=connection();const suffix=encodeURIComponent(cfg.server||"default");
- try{favorites=new Set(JSON.parse(localStorage.getItem("tg_favorites_"+suffix)||"[]"));unreadChats=new Set(JSON.parse(localStorage.getItem("tg_unread_"+suffix)||"[]"));seenMessages=JSON.parse(localStorage.getItem("tg_seen_"+suffix)||"{}");messageReactions=JSON.parse(localStorage.getItem("tg_reactions_"+suffix)||"{}");}catch(_){favorites=new Set();unreadChats=new Set();seenMessages={};messageReactions={};}
+ try{favorites=new Set(JSON.parse(localStorage.getItem("tg_favorites_"+suffix)||"[]"));unreadChats=new Set(JSON.parse(localStorage.getItem("tg_unread_"+suffix)||"[]"));seenMessages=JSON.parse(localStorage.getItem("tg_seen_"+suffix)||"{}")||{};messageReactions=JSON.parse(localStorage.getItem("tg_reactions_"+suffix)||"{}")||{};}catch(_){favorites=new Set();unreadChats=new Set();seenMessages={};messageReactions={};}
 }
 function saveLocalChatState(){
  const suffix=encodeURIComponent(connection().server||"default");
@@ -832,6 +832,7 @@ function openMessageMenu(message,x,y){
  menu.querySelector('[data-action="edit"]').hidden=!(message.direction==="outgoing"&&!message.media_type&&hasTelegramId);
  menu.querySelector('[data-action="forward"]').hidden=!hasTelegramId;
  menu.querySelector('[data-action="copy"]').hidden=!(message.text||"");
+ menu.querySelector('[data-action="react"]').hidden=!hasTelegramId;
  const isPinned=!!(hasTelegramId&&pinnedMessage&&String(pinnedMessage.message_id)===String(message.telegram_message_id));
  menu.querySelector('[data-action="pin"]').hidden=!hasTelegramId||isPinned;
  menu.querySelector('[data-action="unpin"]').hidden=!isPinned;
@@ -921,7 +922,7 @@ async function renderMessages(ms,{animateNew=true}={}){
  const oldTop=box.scrollTop;
  const previousMessageIds=new Set(currentMessages.map(item=>String(item.id)));
  const chatKey=String(activeChatId||"");
- if(!firstNewMessageId){const seen=Number(seenMessages[chatKey]||0);const firstNew=ms.find(item=>item.direction==="incoming"&&(forceNewDivider||Number(item.id)>seen));if(firstNew)firstNewMessageId=String(firstNew.id);}
+ if(!firstNewMessageId&&(forceNewDivider||seenMessages[chatKey]!=null)){const seen=Number(seenMessages[chatKey]||0);const firstNew=ms.find(item=>item.direction==="incoming"&&(forceNewDivider||Number(item.id)>seen));if(firstNew)firstNewMessageId=String(firstNew.id);}
 
  if(mediaObserver){mediaObserver.disconnect();mediaObserver=null;}
  box.replaceChildren();currentMessages=ms;
@@ -957,7 +958,7 @@ async function loadMessages({force=false}={}){
  if(!force&&activeAudio){pendingMessages=next;return;}
  pendingMessages=null;await renderMessages(next,{animateNew:!force});
 }
-async function selectChat(id){if(String(id)!==String(activeChatId))playChatOpenSound();const selectedId=String(id);forceNewDivider=unreadChats.has(selectedId)&&seenMessages[selectedId]==null;firstNewMessageId=null;activeChatId=selectedId;unreadChats.delete(selectedId);saveLocalChatState();$("messageText").value=localStorage.getItem(draftKey(selectedId))||"";$("emojiPicker").hidden=true;$("mediaInput").value="";showSelectedFile(null);$("fileStatus").textContent="";currentMessages=[];pendingMessages=null;pinnedMessage=null;setReplyTarget(null);setConversationTab("chat");const c=chats.find(x=>String(x.chat_id)===activeChatId);$("activeName").textContent=c?displayName(c):tr("chooseChatName");$("activeAvatar").textContent=(c?displayName(c):"T").slice(0,1).toUpperCase();$("activeId").textContent=tr("chatId")+activeChatId;updatePageTitle();$("messageText").disabled=false;$("sendBtn").disabled=false;$("attachBtn").disabled=false;$("voiceBtn").disabled=false;$("emojiBtn").disabled=false;$("clearChatBtn").disabled=false;renderChats();updateDetailsPanel();await Promise.all([loadMessages({force:true}),refreshPinnedMessage()]);}
+async function selectChat(id){if(String(id)!==String(activeChatId))playChatOpenSound();const selectedId=String(id);forceNewDivider=unreadChats.has(selectedId)&&seenMessages[selectedId]==null;firstNewMessageId=null;clearTimeout(typingTimer);activeChatId=selectedId;unreadChats.delete(selectedId);saveLocalChatState();$("messageText").value=localStorage.getItem(draftKey(selectedId))||"";$("emojiPicker").hidden=true;$("mediaInput").value="";showSelectedFile(null);$("fileStatus").textContent="";currentMessages=[];pendingMessages=null;pinnedMessage=null;setReplyTarget(null);setConversationTab("chat");const c=chats.find(x=>String(x.chat_id)===activeChatId);$("activeName").textContent=c?displayName(c):tr("chooseChatName");$("activeAvatar").textContent=(c?displayName(c):"T").slice(0,1).toUpperCase();$("activeId").textContent=tr("chatId")+activeChatId;updatePageTitle();$("messageText").disabled=false;$("sendBtn").disabled=false;$("attachBtn").disabled=false;$("voiceBtn").disabled=false;$("emojiBtn").disabled=false;$("clearChatBtn").disabled=false;renderChats();updateDetailsPanel();await Promise.all([loadMessages({force:true}),refreshPinnedMessage()]);}
 async function refreshAll(){if($("dashboard").hidden)return;if(busy){refreshQueued=true;return;}busy=true;try{await loadChats({detect:true});await loadMessages();}catch(e){if(!e.message.includes("Войди"))toast(e.message);}finally{busy=false;if(refreshQueued&&!$("dashboard").hidden){refreshQueued=false;queueMicrotask(()=>refreshAll());}}}
 $("loginForm").addEventListener("submit",async e=>{
  e.preventDefault();$("loginBtn").disabled=true;$("loginError").textContent="";
@@ -1152,7 +1153,7 @@ $("clearChatBtn").addEventListener("click",async()=>{
  const button=$("clearChatBtn");button.disabled=true;
  try{
   await api("/api/chats/"+encodeURIComponent(activeChatId)+"/messages",{method:"DELETE"});
-  await loadChats();await loadMessages();toast(tr("clearDone"));
+  firstNewMessageId=null;forceNewDivider=false;seenMessages[String(activeChatId)]=0;saveLocalChatState();await loadChats();await loadMessages({force:true});toast(tr("clearDone"));
  }catch(err){toast(tr("clearFailed")+" "+err.message);}
  finally{button.disabled=!activeChatId;}
 });
