@@ -589,7 +589,7 @@ app.get("/api/sticker-packs", requireAdmin, async (_req, res) => {
   try {
     const result = await pool.query(
       `SELECT p.id::text AS id, p.set_name, p.title, p.sticker_count,
-              i.id::text AS cover_id, i.media_type AS cover_type
+              i.id::text AS cover_id, i.media_type AS cover_type, i.preview_mime_type AS cover_preview_mime_type
        FROM sticker_packs p
        LEFT JOIN LATERAL (
          SELECT id, media_type FROM sticker_pack_items
@@ -650,7 +650,7 @@ app.get("/api/sticker-packs/:packId/stickers", requireAdmin, async (req, res) =>
     const pack = await pool.query("SELECT id::text, set_name, title, sticker_count FROM sticker_packs WHERE id = $1", [req.params.packId]);
     if (!pack.rows.length) return res.status(404).json({ ok: false, error: "Набор не найден." });
     const stickers = await pool.query(
-      `SELECT id::text, file_id, media_type, emoji
+      `SELECT id::text, file_id, media_type, preview_mime_type, emoji
        FROM sticker_pack_items WHERE pack_id = $1 ORDER BY position ASC`,
       [req.params.packId]
     );
