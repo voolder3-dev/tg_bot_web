@@ -522,7 +522,7 @@ app.get("/api/stickers", requireAdmin, async (_req, res) => {
 app.post("/api/send-sticker", requireAdmin, async (req, res) => {
   const chatId = String(req.body?.chat_id || "");
   const fileId = typeof req.body?.file_id === "string" ? req.body.file_id : "";
-  if (!/^-?\\d+$/.test(chatId) || !fileId || fileId.length > 512) {
+  if (!/^-?\d+$/.test(chatId) || !fileId || fileId.length > 512) {
     return res.status(400).json({ ok: false, error: "Выбери стикер и чат." });
   }
   try {
@@ -568,7 +568,7 @@ app.patch("/api/chats/:chatId/messages/:messageId", requireAdmin, async (req, re
   const chatId = req.params.chatId;
   const localId = req.params.messageId;
   const textValue = typeof req.body?.text === "string" ? req.body.text.trim() : "";
-  if (!/^-?\\d+$/.test(chatId) || !/^\\d+$/.test(localId) || !textValue || textValue.length > 4096) {
+  if (!/^-?\d+$/.test(chatId) || !/^\d+$/.test(localId) || !textValue || textValue.length > 4096) {
     return res.status(400).json({ ok: false, error: "Проверь текст сообщения (от 1 до 4096 символов)." });
   }
   try {
@@ -596,7 +596,7 @@ app.post("/api/forward-message", requireAdmin, async (req, res) => {
   const sourceChatId = String(req.body?.source_chat_id || "");
   const targetChatId = String(req.body?.target_chat_id || "");
   const messageId = Number(req.body?.message_id);
-  if (!/^-?\\d+$/.test(sourceChatId) || !/^-?\\d+$/.test(targetChatId) || !Number.isSafeInteger(messageId) || messageId < 1 || sourceChatId === targetChatId) {
+  if (!/^-?\d+$/.test(sourceChatId) || !/^-?\d+$/.test(targetChatId) || !Number.isSafeInteger(messageId) || messageId < 1 || sourceChatId === targetChatId) {
     return res.status(400).json({ ok: false, error: "Выбери другой чат для пересылки." });
   }
   try {
