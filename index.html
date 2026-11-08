@@ -290,22 +290,26 @@ function showDashboard(){$("loginView").hidden=true;$("dashboard").hidden=false;
 function displayName(c){return c.title||[c.first_name,c.last_name].filter(Boolean).join(" ")||(c.username?"@"+c.username:tr("user"));}
 function renderChats(){const q=$("searchInput").value.trim().toLowerCase(),v=chats.filter(c=>[displayName(c),c.username,c.chat_id,c.last_message].join(" ").toLowerCase().includes(q));$("chatCount").textContent=chats.length+" "+(chats.length===1?tr("chat"):tr("chats"));const list=$("chatList");list.replaceChildren();if(!v.length){const e=document.createElement("div");e.className="empty";e.textContent=chats.length?tr("nothingFound"):tr("noChats");list.append(e);return;}v.forEach(c=>{const item=document.createElement("div");item.className="chat"+(String(c.chat_id)===String(activeChatId)?" active":"");const av=document.createElement("div");av.className="avatar";av.textContent=displayName(c).slice(0,1).toUpperCase()||"T";const info=document.createElement("div");info.className="chat-info";const n=document.createElement("div");n.className="chat-name";n.textContent=displayName(c);const p=document.createElement("div");p.className="chat-preview";p.textContent=c.last_message||"Нет сообщений";const id=document.createElement("div");id.className="chat-id";id.textContent=tr("id")+c.chat_id;info.append(n,p,id);item.append(av,info);item.addEventListener("click",()=>selectChat(c.chat_id));list.append(item);});}
 const mediaUrlCache=new Map();
+const mediaRequestsInFlight=new Map();
 async function fetchMediaUrl(messageId,{force=false}={}){
  const key=String(messageId);
  if(force&&mediaUrlCache.has(key)){URL.revokeObjectURL(mediaUrlCache.get(key));mediaUrlCache.delete(key);}
  if(mediaUrlCache.has(key))return mediaUrlCache.get(key);
- const cfg=connection();
- const response=await fetch(cfg.server+"/api/media/"+encodeURIComponent(messageId),{headers:{"X-Admin-Key":cfg.key},cache:"no-store"});
- if(!response.ok)throw new Error("HTTP "+response.status);
- const blob=await response.blob();
- if(!blob.size)throw new Error("Empty media response");
- const url=URL.createObjectURL(blob);
- mediaUrlCache.set(key,url);
- while(mediaUrlCache.size>80){
-  const oldest=mediaUrlCache.keys().next().value;
-  URL.revokeObjectURL(mediaUrlCache.get(oldest));mediaUrlCache.delete(oldest);
- }
- return url;
+ if(mediaRequestsInFlight.has(key))return mediaRequestsInFlight.get(key);
+ const request=(async()=>{
+  const cfg=connection();const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),20000);
+  try{
+   const response=await fetch(cfg.server+"/api/media/"+encodeURIComponent(messageId),{headers:{"X-Admin-Key":cfg.key},cache:"no-store",signal:controller.signal});
+   if(!response.ok)throw new Error("HTTP "+response.status);
+   const blob=await response.blob();if(!blob.size)throw new Error("Empty media response");
+   const url=URL.createObjectURL(blob);mediaUrlCache.set(key,url);
+   while(mediaUrlCache.size>80){const oldest=mediaUrlCache.keys().next().value;URL.revokeObjectURL(mediaUrlCache.get(oldest));mediaUrlCache.delete(oldest);}
+   return url;
+  }catch(error){if(error.name==="AbortError")throw new Error(currentLang==="ru"?"Превышено время загрузки (20 секунд).":"Media loading timed out (20 seconds).");throw error;}
+  finally{clearTimeout(timeout);}
+ })();
+ mediaRequestsInFlight.set(key,request);
+ try{return await request;}finally{if(mediaRequestsInFlight.get(key)===request)mediaRequestsInFlight.delete(key);}
 }
 function mediaRetryButton(messageId,b,loading,attempt){
  const retry=document.createElement("button");retry.type="button";retry.className="media-retry-btn";retry.textContent=currentLang==="ru"?"↻ Повторить загрузку":"↻ Retry loading";
@@ -381,14 +385,23 @@ function createCustomAudioPlayer(url,m,onMediaError){
  wrap.append(audio,play,track,bottom);
  return wrap;
 }
+let mediaObserver=null;
 async function renderMessages(ms){
- const box=$("messages");box.replaceChildren();
+ const box=$("messages");
+ if(mediaObserver){mediaObserver.disconnect();mediaObserver=null;}
+ box.replaceChildren();
  if(!ms.length){const e=document.createElement("div");e.className="empty";e.textContent=tr("noMessages");box.append(e);return;}
+ if("IntersectionObserver" in window){
+  mediaObserver=new IntersectionObserver(entries=>{
+   entries.forEach(entry=>{if(!entry.isIntersecting)return;mediaObserver.unobserve(entry.target);if(entry.target._mediaLoadTask)entry.target._mediaLoadTask();});
+  },{root:box,rootMargin:"500px 0px"});
+ }
  ms.forEach(m=>{
   const b=document.createElement("div");b.className="bubble "+(m.direction==="outgoing"?"outgoing":"incoming");
   if(m.media_type&&m.id){
-   const loading=document.createElement("div");loading.className="media-loading";loading.textContent=tr("mediaLoading");b.append(loading);
-   loadMessageMedia(m,b,loading);
+   const loading=document.createElement("div");loading.className="media-loading";loading.textContent=currentLang==="ru"?"Медиа загрузится при прокрутке сюда…":"Media will load as you scroll here…";b.append(loading);
+   b._mediaLoadTask=()=>loadMessageMedia(m,b,loading);
+   if(mediaObserver)mediaObserver.observe(b);else b._mediaLoadTask();
   }
   const body=document.createElement("div");body.className=m.media_type?"media-caption":"";body.textContent=m.text||"";
   if(body.textContent)b.append(body);
