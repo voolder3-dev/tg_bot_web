@@ -596,7 +596,7 @@ function setChatFilter(filter){
 
 function cleanServerUrl(value){const url=new URL(value.trim());if(url.protocol!=="https:"&&!(url.protocol==="http:"&&["localhost","127.0.0.1"].includes(url.hostname)))throw new Error(tr("https"));if(url.username||url.password||url.search||url.hash)throw new Error(tr("badUrl"));if(url.pathname!=="/")throw new Error(tr("pathUrl"));return url.origin;}
 async function api(path,options={}){const cfg=connection();if(!cfg.server||!cfg.key)throw new Error(tr("loginFirst"));const headers={"X-Admin-Key":cfg.key,...(options.headers||{})};if(!(options.body instanceof FormData))headers["Content-Type"]="application/json";let r;try{r=await fetch(cfg.server+path,{...options,headers});}catch(error){throw new Error((currentLang==="ru"?"Не удалось связаться с сервером: ":"Could not reach server: ")+error.message);}const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{};}catch(_){d={};}if(r.status===401){showLogin();throw new Error(d.error||tr("checkKey"));}if(!r.ok||d.ok!==true){const detail=d.error||(raw?raw.slice(0,220).replace(/\\s+/g," "):"");throw new Error((detail||tr("serverError"))+" (HTTP "+r.status+")");}return d;}
-function showLogin(){updatePageTitle();if(voiceRecorder&&voiceRecorder.state!=="inactive"){voiceRecorder.onstop=null;voiceRecorder.stop();}voiceChunks=[];voiceTargetChatId=null;voiceCancelRequested=true;stopVoiceVisualizer();$("voiceRecorderPanel").hidden=true;if(voiceStream)voiceStream.getTracks().forEach(track=>track.stop());voiceStream=null;voiceRecorder=null;$("voiceBtn").disabled=true;$("voiceBtn").classList.remove("recording");$("voiceBtn").textContent="🎙";$("voiceStatus").textContent="";if(refreshTimer)clearInterval(refreshTimer);refreshTimer=null;$("dashboard").hidden=true;$("loginView").hidden=false;$("statusText").textContent=tr("offline");$("statusDot").classList.remove("online");$("messageText").disabled=true;$("sendBtn").disabled=true;$("attachBtn").disabled=true;$("clearChatBtn").disabled=true;}
+function showLogin(){updatePageTitle();if(voiceRecorder&&voiceRecorder.state!=="inactive"){voiceRecorder.onstop=null;voiceRecorder.stop();}voiceChunks=[];voiceTargetChatId=null;voiceCancelRequested=true;stopVoiceVisualizer();$("voiceRecorderPanel").hidden=true;if(voiceStream)voiceStream.getTracks().forEach(track=>track.stop());voiceStream=null;voiceRecorder=null;$("voiceBtn").disabled=true;$("voiceBtn").classList.remove("recording");$("voiceBtn").textContent="🎙";$("voiceStatus").textContent="";if(refreshTimer)clearInterval(refreshTimer);refreshTimer=null;$("dashboard").hidden=true;$("loginView").hidden=false;$("statusText").textContent=tr("offline");$("statusDot").classList.remove("online");$("messageText").disabled=true;$("sendBtn").disabled=true;$("attachBtn").disabled=true;$("emojiBtn").disabled=true;$("clearChatBtn").disabled=true;}
 function showDashboard(){$("loginView").hidden=true;$("dashboard").hidden=false;updatePageTitle();$("statusText").textContent=tr("connected");$("statusDot").classList.add("online");$("connectedServer").textContent=connection().server;if(refreshTimer)clearInterval(refreshTimer);refreshTimer=setInterval(refreshAll,15000);setTimeout(maybeAskForNotifications,250);}
 function displayName(c){return c.custom_name||c.title||[c.first_name,c.last_name].filter(Boolean).join(" ")||(c.username?"@"+c.username:tr("user"));}
 function renderChats(){
@@ -1066,7 +1066,7 @@ $("emojiTab").addEventListener("click",()=>{$("emojiGrid").hidden=false;$("stick
 $("stickerTab").addEventListener("click",()=>{$("emojiGrid").hidden=true;$("stickerGrid").hidden=false;$("stickerTab").classList.add("active");$("emojiTab").classList.remove("active");loadRecentStickers();});
 $("emojiBtn").addEventListener("click",()=>{$("emojiPicker").hidden=!$("emojiPicker").hidden;});
 document.addEventListener("pointerdown",event=>{if(!$("emojiPicker").hidden&&!event.target.closest("#emojiPicker,#emojiBtn"))$("emojiPicker").hidden=true;});
-$("removeFileBtn").addEventListener("click",()=>{ $("mediaInput").value="";$("fileChip").hidden=true;$("fileStatus").textContent="";});
+$("removeFileBtn").addEventListener("click",()=>{ $("mediaInput").value="";showSelectedFile(null);$("fileStatus").textContent="";});
 let selectedFilePreviewUrl=null;
 function showSelectedFile(file){
  $("fileChip").hidden=!file;
@@ -1166,7 +1166,7 @@ $("sendForm").addEventListener("submit",async e=>{
    const data=new FormData();data.append("chat_id",activeChatId);data.append("caption",message);data.append("file",file);
    await api("/api/send-media",{method:"POST",body:data});
    playSendSound();
-   $("mediaInput").value="";$("fileChip").hidden=true;$("fileStatus").textContent="";$("messageText").value="";
+   $("mediaInput").value="";showSelectedFile(null);$("fileStatus").textContent="";$("messageText").value="";
    await refreshAll();toast(tr("fileSent"));
   }else{
    const optimistic=addOptimisticMessage(message);
