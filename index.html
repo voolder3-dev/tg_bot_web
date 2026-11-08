@@ -387,6 +387,7 @@ function applyLanguage(lang){
 document.querySelectorAll(".lang-btn").forEach(b=>b.addEventListener("click",()=>applyLanguage(b.dataset.lang)));
 
 let chats = [], activeChatId = null, refreshTimer = null, busy = false, refreshQueued = false;
+const chatElements = new Map();
 let currentMessages=[];let pendingMessages=null;let replyTarget=null;let currentConversationTab="chat";let pinnedMessage=null;let contextMessage=null;
 let knownIncomingMessages = new Map();
 let chatsWithFreshMessages = new Set();
@@ -519,7 +520,61 @@ async function api(path,options={}){const cfg=connection();if(!cfg.server||!cfg.
 function showLogin(){updatePageTitle();if(voiceRecorder&&voiceRecorder.state!=="inactive"){voiceRecorder.onstop=null;voiceRecorder.stop();}voiceChunks=[];voiceTargetChatId=null;voiceCancelRequested=true;stopVoiceVisualizer();$("voiceRecorderPanel").hidden=true;if(voiceStream)voiceStream.getTracks().forEach(track=>track.stop());voiceStream=null;voiceRecorder=null;$("voiceBtn").disabled=true;$("voiceBtn").classList.remove("recording");$("voiceBtn").textContent="🎙";$("voiceStatus").textContent="";if(refreshTimer)clearInterval(refreshTimer);refreshTimer=null;$("dashboard").hidden=true;$("loginView").hidden=false;$("statusText").textContent=tr("offline");$("statusDot").classList.remove("online");$("messageText").disabled=true;$("sendBtn").disabled=true;$("attachBtn").disabled=true;$("clearChatBtn").disabled=true;}
 function showDashboard(){$("loginView").hidden=true;$("dashboard").hidden=false;updatePageTitle();$("statusText").textContent=tr("connected");$("statusDot").classList.add("online");$("connectedServer").textContent=connection().server;if(refreshTimer)clearInterval(refreshTimer);refreshTimer=setInterval(refreshAll,15000);setTimeout(maybeAskForNotifications,250);}
 function displayName(c){return c.custom_name||c.title||[c.first_name,c.last_name].filter(Boolean).join(" ")||(c.username?"@"+c.username:tr("user"));}
-function renderChats(){const q=$("searchInput").value.trim().toLowerCase(),v=chats.filter(c=>[displayName(c),c.username,c.chat_id,c.last_message].join(" ").toLowerCase().includes(q));$("chatCount").textContent=chats.length+" "+(chats.length===1?tr("chat"):tr("chats"));const list=$("chatList");const previousScrollTop=list.scrollTop;list.replaceChildren();if(!v.length){const e=document.createElement("div");e.className="empty";e.textContent=chats.length?tr("nothingFound"):tr("noChats");list.append(e);return;}v.forEach(c=>{const fresh=chatsWithFreshMessages.has(String(c.chat_id));const item=document.createElement("div");item.className="chat"+(String(c.chat_id)===String(activeChatId)?" active":"")+(fresh?" chat-new-message":"");item.addEventListener("pointerenter",()=>{if(!item.matches(":hover"))return;const now=Date.now();if(now-(window.__lastChatHoverSound||0)>180) {window.__lastChatHoverSound=now;playHoverSound();}});const av=document.createElement("div");av.className="avatar";av.textContent=displayName(c).slice(0,1).toUpperCase()||"T";const info=document.createElement("div");info.className="chat-info";const n=document.createElement("div");n.className="chat-name";n.textContent=displayName(c);const p=document.createElement("div");p.className="chat-preview";p.textContent=c.last_message||"Нет сообщений";const id=document.createElement("div");id.className="chat-id";id.textContent=tr("id")+c.chat_id;info.append(n,p,id);item.append(av,info);item.addEventListener("click",()=>selectChat(c.chat_id));list.append(item);});list.scrollTop=scrollChatListToBottom?list.scrollHeight:previousScrollTop;scrollChatListToBottom=false;chatsWithFreshMessages.clear();}
+function renderChats(){
+ const q=$("searchInput").value.trim().toLowerCase();
+ const v=chats.filter(c=>[displayName(c),c.username,c.chat_id,c.last_message].join(" ").toLowerCase().includes(q));
+ $("chatCount").textContent=chats.length+" "+(chats.length===1?tr("chat"):tr("chats"));
+ const list=$("chatList"),previousScrollTop=list.scrollTop;
+ if(!v.length){
+  chatElements.forEach(item=>item.remove());
+  chatElements.clear();
+  if(!list.querySelector(".empty")){
+   list.replaceChildren();
+   const e=document.createElement("div");e.className="empty";
+   e.textContent=chats.length?tr("nothingFound"):tr("noChats");
+   list.append(e);
+  }else{
+   list.querySelector(".empty").textContent=chats.length?tr("nothingFound"):tr("noChats");
+  }
+  return;
+ }
+ const empty=list.querySelector(".empty");if(empty)empty.remove();
+ const visibleIds=new Set(v.map(c=>String(c.chat_id)));
+ for(const [id,item] of chatElements){if(!visibleIds.has(id)){item.remove();chatElements.delete(id);}}
+ v.forEach(c=>{
+  const id=String(c.chat_id);
+  let item=chatElements.get(id);
+  if(!item){
+   item=document.createElement("div");
+   item.className="chat";
+   item.addEventListener("pointerenter",()=>{
+    if(!item.matches(":hover"))return;
+    const now=Date.now();
+    if(now-(window.__lastChatHoverSound||0)>180){window.__lastChatHoverSound=now;playHoverSound();}
+   });
+   item.addEventListener("click",()=>selectChat(item.dataset.chatId));
+   const av=document.createElement("div");av.className="avatar";
+   const info=document.createElement("div");info.className="chat-info";
+   const n=document.createElement("div");n.className="chat-name";
+   const p=document.createElement("div");p.className="chat-preview";
+   const chatId=document.createElement("div");chatId.className="chat-id";
+   info.append(n,p,chatId);item.append(av,info);
+   item._avatar=av;item._name=n;item._preview=p;item._id=chatId;
+   chatElements.set(id,item);
+  }
+  item.dataset.chatId=id;
+  item.className="chat"+(id===String(activeChatId)?" active":"")+(chatsWithFreshMessages.has(id)?" chat-new-message":"");
+  item._avatar.textContent=displayName(c).slice(0,1).toUpperCase()||"T";
+  item._name.textContent=displayName(c);
+  item._preview.textContent=c.last_message||"Нет сообщений";
+  item._id.textContent=tr("id")+c.chat_id;
+  // Reordering reuses the existing DOM node, so its entry animation does not replay.
+  list.append(item);
+ });
+ list.scrollTop=scrollChatListToBottom?list.scrollHeight:previousScrollTop;
+ scrollChatListToBottom=false;
+ chatsWithFreshMessages.clear();
+}
 const mediaUrlCache=new Map();
 const mediaRequestsInFlight=new Map();
 async function fetchMediaUrl(messageId,{force=false}={}){
