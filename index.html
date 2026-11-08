@@ -385,10 +385,11 @@ $("logoutBtn").addEventListener("click",()=>{sessionStorage.removeItem("tg_dashb
 
 async function sendRecordedVoice(blob){
  const targetChatId=voiceTargetChatId||activeChatId;
- if(!targetChatId)return;
- if(!blob||!blob.size){toast(currentLang==="ru"?"Запись пустая. Попробуй ещё раз.":"The recording is empty. Please try again.");return;}
- if(blob.size>20*1024*1024){toast(currentLang==="ru"?"Запись слишком большая (максимум 20 МБ).":"Recording is too large (20 MB maximum).");return;}
- const button=$("voiceBtn");button.disabled=true;
+ const button=$("voiceBtn");
+ if(!targetChatId){voiceTargetChatId=null;$("voiceStatus").textContent="";button.disabled=!activeChatId;return;}
+ if(!blob||!blob.size){toast(currentLang==="ru"?"Запись пустая. Попробуй ещё раз.":"The recording is empty. Please try again.");voiceTargetChatId=null;$("voiceStatus").textContent="";button.disabled=!activeChatId;return;}
+ if(blob.size>20*1024*1024){toast(currentLang==="ru"?"Запись слишком большая (максимум 20 МБ).":"Recording is too large (20 MB maximum).");voiceTargetChatId=null;$("voiceStatus").textContent="";button.disabled=!activeChatId;return;}
+ button.disabled=true;
  $("voiceStatus").textContent=currentLang==="ru"?"Отправка голосового сообщения…":"Sending voice message…";
  try{
   const data=new FormData();data.append("chat_id",targetChatId);
@@ -420,8 +421,9 @@ async function toggleVoiceRecording(){
   voiceChunks=[];
   voiceRecorder.ondataavailable=event=>{if(event.data&&event.data.size)voiceChunks.push(event.data);};
   voiceRecorder.onerror=()=>{toast(currentLang==="ru"?"Ошибка записи с микрофона.":"Microphone recording failed.");};
-  voiceRecorder.onstop=()=>{
-   const blob=new Blob(voiceChunks,{type:voiceRecorder?.mimeType||"audio/webm"});
+  const activeRecorder=voiceRecorder;
+  activeRecorder.onstop=()=>{
+   const blob=new Blob(voiceChunks,{type:activeRecorder.mimeType||"audio/webm"});
    voiceChunks=[];if(voiceStream)voiceStream.getTracks().forEach(track=>track.stop());voiceStream=null;
    voiceRecorder=null;button.classList.remove("recording");button.textContent="🎙";
    button.title=tr("voiceRecord");button.setAttribute("aria-label",tr("voiceRecord"));
@@ -432,7 +434,7 @@ async function toggleVoiceRecording(){
   button.title=tr("voiceStopSend");button.setAttribute("aria-label",tr("voiceStopSend"));
   $("voiceStatus").textContent=tr("voiceRecording");
  }catch(error){
-  if(voiceStream)voiceStream.getTracks().forEach(track=>track.stop());voiceStream=null;voiceRecorder=null;
+  if(voiceStream)voiceStream.getTracks().forEach(track=>track.stop());voiceStream=null;voiceRecorder=null;voiceTargetChatId=null;
   button.disabled=!activeChatId;
   toast(error.name==="NotAllowedError"?(currentLang==="ru"?"Разреши доступ к микрофону в браузере.":"Allow microphone access in your browser."):(error.message||"Microphone error"));
  }
