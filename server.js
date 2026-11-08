@@ -187,6 +187,26 @@ async function initDatabase() {
     ALTER TABLE messages ADD COLUMN IF NOT EXISTS sticker_file_id TEXT;
     ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to_message_id BIGINT;
 
+    CREATE TABLE IF NOT EXISTS sticker_packs (
+      id BIGSERIAL PRIMARY KEY,
+      set_name TEXT NOT NULL UNIQUE,
+      title TEXT NOT NULL,
+      cover_file_id TEXT,
+      sticker_count INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS sticker_pack_items (
+      id BIGSERIAL PRIMARY KEY,
+      pack_id BIGINT NOT NULL REFERENCES sticker_packs(id) ON DELETE CASCADE,
+      file_id TEXT NOT NULL,
+      preview_file_id TEXT,
+      media_type TEXT NOT NULL,
+      mime_type TEXT NOT NULL,
+      emoji TEXT,
+      position INTEGER NOT NULL DEFAULT 0,
+      UNIQUE(pack_id, file_id)
+    );
+
     CREATE INDEX IF NOT EXISTS messages_chat_created_idx
       ON messages(chat_id, created_at DESC);
     CREATE UNIQUE INDEX IF NOT EXISTS messages_telegram_unique_idx
@@ -342,10 +362,16 @@ app.get("/api/media/:messageId", requireAdmin, async (req, res) => {
   const messageId = req.params.messageId;
   if (!/^\d+$/.test(messageId)) return res.status(400).json({ ok: false, error: "Некорректный ID медиа." });
   try {
-    const result = await pool.query(
+    let result = await pool.query(
       "SELECT media_file_id, media_mime_type, media_file_name FROM messages WHERE id = $1 AND media_file_id IS NOT NULL",
       [messageId]
     );
+    if (!result.rows.length) {
+      result = await pool.query(
+        "SELECT COALESCE(preview_file_id, file_id) AS media_file_id, mime_type AS media_mime_type, NULL AS media_file_name FROM sticker_pack_items WHERE id = $1",
+        [messageId]
+      );
+    }
     if (!result.rows.length) return res.status(404).json({ ok: false, error: "Файл не найден." });
     const media = result.rows[0];
     let fileBuffer = null;
@@ -555,6 +581,100 @@ app.get("/api/stickers", requireAdmin, async (_req, res) => {
   } catch (error) {
     console.error("Sticker list failed:", error.message);
     res.status(500).json({ ok: false, error: "Не удалось загрузить недавние стикеры." });
+  }
+});
+
+app.get("/api/sticker-packs", requireAdmin, async (_req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT p.id::text AS id, p.set_name, p.title, p.sticker_count,
+              i.id::text AS cover_id, i.media_type AS cover_type
+       FROM sticker_packs p
+       LEFT JOIN LATERAL (
+         SELECT id, media_type FROM sticker_pack_items
+         WHERE pack_id = p.id ORDER BY position ASC LIMIT 1
+       ) i ON TRUE
+       ORDER BY p.created_at DESC`
+    );
+    res.json({ ok: true, packs: result.rows });
+  } catch (error) {
+    console.error("Sticker packs list failed:", error.message);
+    res.status(500).json({ ok: false, error: "Не удалось загрузить наборы стикеров." });
+  }
+});
+
+app.post("/api/sticker-packs/import", requireAdmin, async (req, res) => {
+  const input = String(req.body?.link || req.body?.set_name || "").trim();
+  const match = input.match(/(?:https?:\\/\\/)?t\\.me\\/addstickers\\/([A-Za-z0-9_]+)/i) || input.match(/^([A-Za-z][A-Za-z0-9_]{0,63})$/);
+  if (!match) return res.status(400).json({ ok: false, error: "Вставь ссылку вида https://t.me/addstickers/НазваниеНабора." });
+  const setName = match[1];
+  try {
+    const stickerSet = await telegram("getStickerSet", { name: setName });
+    if (!Array.isArray(stickerSet.stickers) || !stickerSet.stickers.length) {
+      return res.status(404).json({ ok: false, error: "Telegram вернул пустой набор." });
+    }
+    const packResult = await pool.query(
+      `INSERT INTO sticker_packs (set_name, title, sticker_count)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (set_name) DO UPDATE SET title = EXCLUDED.title, sticker_count = EXCLUDED.sticker_count
+       RETURNING id`,
+      [stickerSet.name, stickerSet.title || stickerSet.name, stickerSet.stickers.length]
+    );
+    const packId = packResult.rows[0].id;
+    for (let position = 0; position < stickerSet.stickers.length; position++) {
+      const sticker = stickerSet.stickers[position];
+      const mediaType = sticker.is_animated ? "animated_sticker" : sticker.is_video ? "video_sticker" : "sticker";
+      const mimeType = sticker.is_animated ? "application/x-tgsticker" : sticker.is_video ? "video/webm" : "image/webp";
+      await pool.query(
+        `INSERT INTO sticker_pack_items (pack_id, file_id, preview_file_id, media_type, mime_type, emoji, position)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)
+         ON CONFLICT (pack_id, file_id) DO UPDATE SET
+           preview_file_id = EXCLUDED.preview_file_id, media_type = EXCLUDED.media_type,
+           mime_type = EXCLUDED.mime_type, emoji = EXCLUDED.emoji, position = EXCLUDED.position`,
+        [packId, sticker.file_id, sticker.thumbnail?.file_id || (mediaType === "sticker" ? sticker.file_id : null), mediaType, mimeType, sticker.emoji || null, position]
+      );
+    }
+    const cover = stickerSet.stickers[0];
+    res.json({ ok: true, pack: { id: String(packId), set_name: stickerSet.name, title: stickerSet.title || stickerSet.name, sticker_count: stickerSet.stickers.length, cover_type: cover.is_animated ? "animated_sticker" : cover.is_video ? "video_sticker" : "sticker" } });
+  } catch (error) {
+    console.error("Sticker pack import failed:", error.message);
+    const status = error.status === 400 ? 400 : error.status || 502;
+    res.status(status).json({ ok: false, error: error.message || "Не удалось импортировать набор из Telegram." });
+  }
+});
+
+app.get("/api/sticker-packs/:packId/stickers", requireAdmin, async (req, res) => {
+  if (!/^\\d+$/.test(req.params.packId)) return res.status(400).json({ ok: false, error: "Некорректный ID набора." });
+  try {
+    const pack = await pool.query("SELECT id::text, set_name, title, sticker_count FROM sticker_packs WHERE id = $1", [req.params.packId]);
+    if (!pack.rows.length) return res.status(404).json({ ok: false, error: "Набор не найден." });
+    const stickers = await pool.query(
+      `SELECT id::text, file_id, media_type, emoji
+       FROM sticker_pack_items WHERE pack_id = $1 ORDER BY position ASC`,
+      [req.params.packId]
+    );
+    res.json({ ok: true, pack: pack.rows[0], stickers: stickers.rows });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: "Не удалось открыть набор стикеров." });
+  }
+});
+
+app.get("/api/sticker-library/media/:itemId", requireAdmin, async (req, res) => {
+  if (!/^\\d+$/.test(req.params.itemId)) return res.status(400).json({ ok: false, error: "Некорректный ID стикера." });
+  try {
+    const result = await pool.query("SELECT COALESCE(preview_file_id, file_id) AS file_id, mime_type FROM sticker_pack_items WHERE id = $1", [req.params.itemId]);
+    if (!result.rows.length) return res.status(404).json({ ok: false, error: "Превью стикера не найдено." });
+    const fileInfo = await telegram("getFile", { file_id: result.rows[0].file_id });
+    const response = await fetch(`https://api.telegram.org/file/bot${BOT_TOKEN}/${fileInfo.file_path}`);
+    if (!response.ok) throw new Error("Telegram file HTTP " + response.status);
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (!buffer.length) throw new Error("Telegram вернул пустое превью.");
+    res.setHeader("Content-Type", result.rows[0].mime_type === "image/webp" ? "image/webp" : result.rows[0].mime_type);
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    res.end(buffer);
+  } catch (error) {
+    console.error("Sticker library preview failed:", error.message);
+    if (!res.headersSent) res.status(502).json({ ok: false, error: "Не удалось загрузить превью стикера." });
   }
 });
 
