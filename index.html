@@ -358,7 +358,7 @@ body[data-mode="light"][data-theme] .theme-picker select{color:var(--text);backg
 <div class="overlay-modal" id="globalSearchModal" hidden><div class="modal-card"><div class="modal-head"><strong>⌕ Поиск по всем сообщениям</strong><button class="icon-btn" data-close-modal="globalSearchModal" type="button">×</button></div><div class="modal-body"><input class="global-search-input" id="globalSearchInput" type="search" placeholder="Введи слово или фразу (от 2 символов)…"><div class="search-results" id="globalSearchResults"><div class="empty">Начни вводить запрос для поиска.</div></div></div></div></div>
 <div class="overlay-modal" id="mediaViewer" hidden><div class="modal-card"><div class="modal-head"><strong id="mediaViewerTitle">Просмотр медиа</strong><button class="icon-btn" data-close-modal="mediaViewer" type="button">×</button></div><div class="media-viewer-content" id="mediaViewerContent"></div></div></div>
 <div class="overlay-modal" id="addBotModal" hidden><form class="modal-card" id="botProfileForm"><div class="modal-head"><strong>＋ Добавить подключение</strong><button class="icon-btn" data-close-modal="addBotModal" type="button">×</button></div><div class="modal-body"><label class="field"><span>Название</span><input class="input" id="botProfileName" maxlength="32" placeholder="Например, SilverSMP"></label><label class="field"><span>Render URL</span><input class="input" id="botProfileServer" type="url" placeholder="https://your-bot.onrender.com" required></label><label class="field"><span>ADMIN_API_KEY</span><input class="input" id="botProfileKey" type="password" autocomplete="off" required></label><div class="muted">Для каждого бота нужен отдельный адрес backend-сервера и ключ доступа.</div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn secondary" type="button" data-close-modal="addBotModal">Отмена</button><button class="btn" id="botProfileSubmit" type="submit">Подключить</button></div></div></form></div>
-<div class="overlay-modal" id="forwardModal" hidden><form class="modal-card" id="forwardForm"><div class="modal-head"><strong>➦ Переслать сообщение</strong><button class="icon-btn" data-close-modal="forwardModal" type="button">×</button></div><div class="modal-body"><label class="field"><span>Куда переслать?</span><select class="input" id="forwardTarget" required></select></label><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn secondary" type="button" data-close-modal="forwardModal">Отмена</button><button class="btn" type="submit">Переслать</button></div></div></form></div><div class="overlay-modal" id="reactionPicker" hidden><div class="modal-card"><div class="modal-head"><strong>Выбери реакцию</strong><button class="icon-btn" data-close-modal="reactionPicker" type="button">×</button></div><div class="modal-body"><div class="reaction-grid" id="reactionGrid"></div></div></div></div>
+<div class="overlay-modal" id="forwardModal" hidden><form class="modal-card" id="forwardForm"><div class="modal-head"><strong>➦ Переслать сообщение</strong><button class="icon-btn" data-close-modal="forwardModal" type="button">×</button></div><div class="modal-body"><label class="field"><span>Куда переслать?</span><select class="input" id="forwardTarget" required></select></label><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn secondary" type="button" data-close-modal="forwardModal">Отмена</button><button class="btn" type="submit">Переслать</button></div></div></form></div><div class="overlay-modal" id="reactionPicker" hidden><div class="modal-card"><div class="modal-head"><strong>Выбери реакцию</strong><button class="icon-btn" data-close-modal="reactionPicker" type="button">×</button></div><div class="modal-body"><div class="reaction-grid" id="reactionGrid"></div><button class="btn secondary" id="removeReactionBtn" type="button" style="width:100%;margin-top:12px">Убрать реакцию</button></div></div></div>
 <div class="toast" id="toast" role="status"></div>
 <div class="notification-prompt" id="notificationPrompt" role="dialog" aria-modal="true" aria-labelledby="notificationTitle">
  <div class="notification-card">
@@ -678,7 +678,8 @@ function renderChats(){
   }
   item.dataset.chatId=id;
   item.className="chat"+(id===String(activeChatId)?" active":"")+(chatsWithFreshMessages.has(id)?" chat-new-message":"");
-  item._avatar.textContent=displayName(c).slice(0,1).toUpperCase()||"T";
+  const avatarInitial=displayName(c).slice(0,1).toUpperCase()||"T";
+  if(item._avatar.dataset.loadedFor!==id){item._avatar.dataset.loadedFor=id;item._avatar.textContent=avatarInitial;item._avatar.style.backgroundImage="";loadChatAvatar(id,item._avatar);}
   item._name.textContent=displayName(c);
   item._preview.textContent=c.last_message||"Нет сообщений";
   item._id.textContent=tr("id")+c.chat_id;item._favorite.textContent=favorites.has(id)?"★":"☆";item._favorite.classList.toggle("active",favorites.has(id));
@@ -691,6 +692,13 @@ function renderChats(){
 }
 const mediaUrlCache=new Map();
 const mediaRequestsInFlight=new Map();
+const chatAvatarCache=new Map();
+async function loadChatAvatar(chatId,element){
+ const key=String(chatId);
+ if(chatAvatarCache.has(key)){const cached=chatAvatarCache.get(key);if(cached&&element.isConnected&&element.dataset.loadedFor===key){element.textContent="";element.style.backgroundImage=`url("${cached}")`;element.style.backgroundSize="cover";element.style.backgroundPosition="center";}return;}
+ try{const cfg=connection();const response=await fetch(cfg.server+"/api/chats/"+encodeURIComponent(key)+"/avatar",{headers:{"X-Admin-Key":cfg.key},cache:"force-cache"});if(!response.ok)throw new Error("No avatar");const blob=await response.blob();if(!blob.size)throw new Error("Empty avatar");const url=URL.createObjectURL(blob);chatAvatarCache.set(key,url);if(element.isConnected&&element.dataset.loadedFor===key){element.textContent="";element.style.backgroundImage=`url("${url}")`;element.style.backgroundSize="cover";element.style.backgroundPosition="center";}}
+ catch(_){chatAvatarCache.set(key,null);}
+}
 async function fetchMediaUrl(messageId,{force=false}={}){
  const key=String(messageId);
  if(force&&mediaUrlCache.has(key)){URL.revokeObjectURL(mediaUrlCache.get(key));mediaUrlCache.delete(key);}
@@ -738,6 +746,7 @@ async function loadMessageMedia(m,b,loading,attempt=0){
   if(media instanceof HTMLMediaElement)media.src=url;
   else if(media instanceof HTMLImageElement)media.src=url;
   if(media instanceof HTMLMediaElement||media instanceof HTMLImageElement)media.addEventListener("error",()=>showMediaLoadError(m,b,loading,attempt),{once:true});
+  if(media instanceof HTMLImageElement&&(m.media_type==="photo"||m.media_type==="sticker")){media.style.cursor="zoom-in";media.title=currentLang==="ru"?"Открыть на весь экран":"Open fullscreen";media.addEventListener("click",()=>openMediaViewer(m));}
   b.insertBefore(media,b.firstChild);
  }catch(error){showMediaLoadError(m,b,loading,attempt,error);}
 }
@@ -958,7 +967,7 @@ async function loadMessages({force=false}={}){
  if(!force&&activeAudio){pendingMessages=next;return;}
  pendingMessages=null;await renderMessages(next,{animateNew:!force});
 }
-async function selectChat(id){if(String(id)!==String(activeChatId))playChatOpenSound();const selectedId=String(id);forceNewDivider=unreadChats.has(selectedId)&&seenMessages[selectedId]==null;firstNewMessageId=null;clearTimeout(typingTimer);activeChatId=selectedId;unreadChats.delete(selectedId);saveLocalChatState();$("messageText").value=localStorage.getItem(draftKey(selectedId))||"";$("emojiPicker").hidden=true;$("mediaInput").value="";showSelectedFile(null);$("fileStatus").textContent="";currentMessages=[];pendingMessages=null;pinnedMessage=null;setReplyTarget(null);setConversationTab("chat");const c=chats.find(x=>String(x.chat_id)===activeChatId);$("activeName").textContent=c?displayName(c):tr("chooseChatName");$("activeAvatar").textContent=(c?displayName(c):"T").slice(0,1).toUpperCase();$("activeId").textContent=tr("chatId")+activeChatId;updatePageTitle();$("messageText").disabled=false;$("sendBtn").disabled=false;$("attachBtn").disabled=false;$("voiceBtn").disabled=false;$("emojiBtn").disabled=false;$("clearChatBtn").disabled=false;renderChats();updateDetailsPanel();await Promise.all([loadMessages({force:true}),refreshPinnedMessage()]);}
+async function selectChat(id){if(String(id)!==String(activeChatId))playChatOpenSound();const selectedId=String(id);forceNewDivider=unreadChats.has(selectedId)&&seenMessages[selectedId]==null;firstNewMessageId=null;clearTimeout(typingTimer);activeChatId=selectedId;unreadChats.delete(selectedId);saveLocalChatState();$("messageText").value=localStorage.getItem(draftKey(selectedId))||"";$("emojiPicker").hidden=true;$("mediaInput").value="";showSelectedFile(null);$("fileStatus").textContent="";currentMessages=[];pendingMessages=null;pinnedMessage=null;setReplyTarget(null);setConversationTab("chat");const c=chats.find(x=>String(x.chat_id)===activeChatId);$("activeName").textContent=c?displayName(c):tr("chooseChatName");$("activeAvatar").textContent=(c?displayName(c):"T").slice(0,1).toUpperCase();$("activeAvatar").dataset.loadedFor=activeChatId;$("activeAvatar").style.backgroundImage="";loadChatAvatar(activeChatId,$("activeAvatar"));$("activeId").textContent=tr("chatId")+activeChatId;updatePageTitle();$("messageText").disabled=false;$("sendBtn").disabled=false;$("attachBtn").disabled=false;$("voiceBtn").disabled=false;$("emojiBtn").disabled=false;$("clearChatBtn").disabled=false;renderChats();updateDetailsPanel();await Promise.all([loadMessages({force:true}),refreshPinnedMessage()]);}
 async function refreshAll(){if($("dashboard").hidden)return;if(busy){refreshQueued=true;return;}busy=true;try{await loadChats({detect:true});await loadMessages();}catch(e){if(!e.message.includes("Войди"))toast(e.message);}finally{busy=false;if(refreshQueued&&!$("dashboard").hidden){refreshQueued=false;queueMicrotask(()=>refreshAll());}}}
 $("loginForm").addEventListener("submit",async e=>{
  e.preventDefault();$("loginBtn").disabled=true;$("loginError").textContent="";
@@ -1096,7 +1105,7 @@ async function loadRecentStickers(){
   data.stickers.forEach(sticker=>{
    const button=document.createElement("button");button.type="button";button.title=sticker.text||"Sticker";const image=document.createElement("img");image.alt="Sticker";
    fetchMediaUrl(sticker.id).then(url=>{if(image.isConnected)image.src=url;}).catch(()=>{image.alt="⚠";});
-   button.append(image);button.addEventListener("click",async()=>{button.disabled=true;try{await api("/api/send-sticker",{method:"POST",body:JSON.stringify({chat_id:activeChatId,file_id:sticker.media_file_id})});$("emojiPicker").hidden=true;playSendSound();await refreshAll();toast(currentLang==="ru"?"Стикер отправлен.":"Sticker sent.");}catch(error){toast(error.message);}finally{button.disabled=false;}});
+   button.append(image);button.addEventListener("click",async()=>{button.disabled=true;try{await api("/api/send-sticker",{method:"POST",body:JSON.stringify({chat_id:activeChatId,file_id:sticker.sticker_file_id||sticker.media_file_id})});$("emojiPicker").hidden=true;playSendSound();await refreshAll();toast(currentLang==="ru"?"Стикер отправлен.":"Sticker sent.");}catch(error){toast(error.message);}finally{button.disabled=false;}});
    grid.append(button);
   });
  }catch(error){grid.replaceChildren();const failed=document.createElement("div");failed.className="empty";failed.textContent=error.message;grid.append(failed);}
@@ -1161,6 +1170,7 @@ $("clearChatBtn").addEventListener("click",async()=>{
 
 
 
+$("removeReactionBtn").addEventListener("click",async()=>{const message=pendingReactionMessage;if(!message||!activeChatId)return;const button=$("removeReactionBtn");button.disabled=true;try{await api("/api/react-message",{method:"POST",body:JSON.stringify({chat_id:activeChatId,message_id:message.telegram_message_id,remove:true})});delete messageReactions[String(activeChatId)+":"+String(message.id)];saveLocalChatState();closeOverlay("reactionPicker");pendingReactionMessage=null;await renderMessages(currentMessages,{animateNew:false});toast(currentLang==="ru"?"Реакция убрана.":"Reaction removed.");}catch(error){toast(error.message);}finally{button.disabled=false;}});
 const reactionEmojis=["👍","👎","❤","🔥","🎉","😁","😢","🤔","👏","💯"];
 reactionEmojis.forEach(emoji=>{const button=document.createElement("button");button.type="button";button.textContent=emoji;button.addEventListener("click",async()=>{const message=pendingReactionMessage;if(!message||!activeChatId)return;button.disabled=true;try{await api("/api/react-message",{method:"POST",body:JSON.stringify({chat_id:activeChatId,message_id:message.telegram_message_id,emoji})});messageReactions[String(activeChatId)+":"+String(message.id)]=emoji;saveLocalChatState();closeOverlay("reactionPicker");pendingReactionMessage=null;await renderMessages(currentMessages,{animateNew:false});toast(currentLang==="ru"?"Реакция добавлена.":"Reaction added.");}catch(error){toast(error.message);}finally{button.disabled=false;}});$("reactionGrid").append(button);});
 $("forwardForm").addEventListener("submit",async event=>{
