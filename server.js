@@ -242,15 +242,9 @@ app.post("/telegram/webhook", async (req, res) => {
     const chat = message.chat;
     const from = message.from || {};
     const media = extractMedia(message);
-    const mediaLabels = {
-      photo: "[Фото]", video: "[Видео]", animation: "[GIF]", sticker: "[Стикер]",
-      animated_sticker: "[Анимированный стикер]", video_sticker: "[Видеостикер]",
-      document: "[Файл]", audio: "[Аудио]", voice: "[Голосовое сообщение]",
-      video_note: "[Видеосообщение]"
-    };
     const textValue = typeof message.text === "string"
       ? message.text
-      : (message.caption || (media ? mediaLabels[media.type] || "[Медиа]" : "[Сообщение без текста]"));
+      : (media ? String(message.caption || "") : "[Сообщение без текста]");
 
     await pool.query(
       `INSERT INTO chats (chat_id, chat_type, title, username, first_name, last_name, last_message_at)
@@ -295,10 +289,10 @@ app.get("/api/chats", requireAdmin, async (_req, res) => {
     const result = await pool.query(
       `SELECT c.chat_id::text AS chat_id, c.chat_type, c.title, c.custom_name, c.username,
               c.first_name, c.last_name, c.last_message_at,
-              m.text AS last_message, m.id::text AS last_message_id, m.direction AS last_message_direction
+              m.text AS last_message, m.media_type AS last_message_media_type, m.id::text AS last_message_id, m.direction AS last_message_direction
        FROM chats c
        LEFT JOIN LATERAL (
-         SELECT text, id, direction FROM messages WHERE chat_id = c.chat_id
+         SELECT text, media_type, id, direction FROM messages WHERE chat_id = c.chat_id
          ORDER BY created_at DESC, id DESC LIMIT 1
        ) m ON TRUE
        ORDER BY c.last_message_at DESC NULLS LAST`
@@ -470,8 +464,7 @@ app.post("/api/send-media", requireAdmin, upload.single("file"), async (req, res
       throw new Error(data.description || "Telegram не смог отправить файл.");
     }
     const sent = data.result;
-    const label = method === "sendPhoto" ? "[Фото]" : method === "sendVideo" ? "[Видео]" : method === "sendAudio" ? "[Аудио]" : "[Файл]";
-    const storedText = caption ? label + " " + caption : label + " " + file.originalname;
+    const storedText = caption || "";
     const chat = sent.chat;
     await pool.query(
       `INSERT INTO chats (chat_id, chat_type, title, username, first_name, last_name, last_message_at)
@@ -534,9 +527,9 @@ app.post("/api/send-voice", requireAdmin, upload.single("voice"), async (req, re
     await pool.query(
       `INSERT INTO messages
        (chat_id, telegram_message_id, direction, text, sender_name, media_file_id, media_type, media_mime_type, media_file_name, created_at)
-       VALUES ($1, $2, 'outgoing', $3, 'Вы', $4, 'voice', 'audio/ogg', 'voice.ogg', NOW())
+       VALUES ($1, $2, 'outgoing', '', 'Вы', $3, 'voice', 'audio/ogg', 'voice.ogg', NOW())
        ON CONFLICT DO NOTHING`,
-      [String(chat.id), sent.message_id, "[Голосовое сообщение]", sent.voice?.file_id || null]
+      [String(chat.id), sent.message_id, sent.voice?.file_id || null]
     );
     res.json({ ok: true, message_id: sent.message_id, media_type: "voice" });
   } catch (error) {
@@ -736,7 +729,7 @@ app.post("/api/send-sticker", requireAdmin, async (req, res) => {
     const stickerMime = sticker.is_animated ? "application/x-tgsticker" : sticker.is_video ? "video/webm" : "image/webp";
     await pool.query(
       `INSERT INTO messages (chat_id, telegram_message_id, direction, text, sender_name, media_file_id, media_type, media_mime_type, sticker_file_id, created_at)
-       VALUES ($1,$2,'outgoing','[Стикер]','Вы',$3,$4,$5,$3,NOW()) ON CONFLICT DO NOTHING`,
+       VALUES ($1,$2,'outgoing','','Вы',$3,$4,$5,$3,NOW()) ON CONFLICT DO NOTHING`,
       [String(chat.id), sent.message_id, sticker.file_id || fileId, stickerType, stickerMime]
     );
     res.json({ ok: true, message_id: sent.message_id });
