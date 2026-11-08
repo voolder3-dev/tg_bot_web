@@ -43,6 +43,7 @@ h2{font-size:clamp(22px,4vw,30px);margin:0 0 7px;letter-spacing:-.8px}.sub{font-
 .bubble video.message-media,.bubble audio.message-media{width:min(100%,420px);max-height:300px}
 .bubble .media-caption{margin-top:5px;white-space:pre-wrap;overflow-wrap:anywhere}
 .bubble .media-loading{font-size:11px;color:var(--muted);padding:8px 0}
+.bubble .media-retry-btn{display:inline-flex;align-items:center;gap:6px;margin:5px 0 8px;padding:7px 11px;border:1px solid var(--border);border-radius:9px;background:var(--panel);color:var(--blue);font-size:11px;font-weight:700;cursor:pointer}.bubble .media-retry-btn:hover{border-color:var(--blue);background:var(--panel2)}.bubble .media-retry-btn:disabled{opacity:.6;cursor:wait}
 .voice-player{width:min(100%,420px);min-width:230px;display:grid;grid-template-columns:42px minmax(0,1fr);gap:9px 11px;align-items:center;padding:12px;border:1px solid color-mix(in srgb,var(--purple) 34%,var(--border));border-radius:14px;background:linear-gradient(135deg,color-mix(in srgb,var(--purple) 15%,var(--panel)),color-mix(in srgb,var(--blue) 8%,var(--panel)));box-shadow:inset 0 1px 0 #ffffff0a}
 .voice-player audio{display:none}
 .voice-play{width:42px;height:42px;border:0;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--purple),var(--accent2));color:#fff;font-size:16px;cursor:pointer;box-shadow:0 4px 16px color-mix(in srgb,var(--purple) 35%,transparent)}
@@ -289,25 +290,67 @@ function showDashboard(){$("loginView").hidden=true;$("dashboard").hidden=false;
 function displayName(c){return c.title||[c.first_name,c.last_name].filter(Boolean).join(" ")||(c.username?"@"+c.username:tr("user"));}
 function renderChats(){const q=$("searchInput").value.trim().toLowerCase(),v=chats.filter(c=>[displayName(c),c.username,c.chat_id,c.last_message].join(" ").toLowerCase().includes(q));$("chatCount").textContent=chats.length+" "+(chats.length===1?tr("chat"):tr("chats"));const list=$("chatList");list.replaceChildren();if(!v.length){const e=document.createElement("div");e.className="empty";e.textContent=chats.length?tr("nothingFound"):tr("noChats");list.append(e);return;}v.forEach(c=>{const item=document.createElement("div");item.className="chat"+(String(c.chat_id)===String(activeChatId)?" active":"");const av=document.createElement("div");av.className="avatar";av.textContent=displayName(c).slice(0,1).toUpperCase()||"T";const info=document.createElement("div");info.className="chat-info";const n=document.createElement("div");n.className="chat-name";n.textContent=displayName(c);const p=document.createElement("div");p.className="chat-preview";p.textContent=c.last_message||"Нет сообщений";const id=document.createElement("div");id.className="chat-id";id.textContent=tr("id")+c.chat_id;info.append(n,p,id);item.append(av,info);item.addEventListener("click",()=>selectChat(c.chat_id));list.append(item);});}
 const mediaUrlCache=new Map();
-async function fetchMediaUrl(messageId){
- if(mediaUrlCache.has(String(messageId)))return mediaUrlCache.get(String(messageId));
+async function fetchMediaUrl(messageId,{force=false}={}){
+ const key=String(messageId);
+ if(force&&mediaUrlCache.has(key)){URL.revokeObjectURL(mediaUrlCache.get(key));mediaUrlCache.delete(key);}
+ if(mediaUrlCache.has(key))return mediaUrlCache.get(key);
  const cfg=connection();
- const response=await fetch(cfg.server+"/api/media/"+encodeURIComponent(messageId),{headers:{"X-Admin-Key":cfg.key}});
- if(!response.ok)throw new Error("media");
- const url=URL.createObjectURL(await response.blob());
- mediaUrlCache.set(String(messageId),url);
+ const response=await fetch(cfg.server+"/api/media/"+encodeURIComponent(messageId),{headers:{"X-Admin-Key":cfg.key},cache:"no-store"});
+ if(!response.ok)throw new Error("HTTP "+response.status);
+ const blob=await response.blob();
+ if(!blob.size)throw new Error("Empty media response");
+ const url=URL.createObjectURL(blob);
+ mediaUrlCache.set(key,url);
  while(mediaUrlCache.size>80){
   const oldest=mediaUrlCache.keys().next().value;
   URL.revokeObjectURL(mediaUrlCache.get(oldest));mediaUrlCache.delete(oldest);
  }
  return url;
 }
+function mediaRetryButton(messageId,b,loading,attempt){
+ const retry=document.createElement("button");retry.type="button";retry.className="media-retry-btn";retry.textContent=currentLang==="ru"?"↻ Повторить загрузку":"↻ Retry loading";
+ retry.addEventListener("click",()=>{retry.disabled=true;retry.textContent=currentLang==="ru"?"Загружаю…":"Loading…";loadMessageMedia(messageId,b,loading,attempt+1);});
+ b.insertBefore(retry,loading.nextSibling);
+}
+async function loadMessageMedia(m,b,loading,attempt=0){
+ if(!b.isConnected)return;
+ loading.textContent=tr("mediaLoading");
+ const retry=b.querySelector(".media-retry-btn");if(retry)retry.remove();
+ try{
+  const url=await fetchMediaUrl(m.id,{force:attempt>0});
+  if(!b.isConnected)return;
+  loading.remove();
+  let media;
+  if(m.media_type==="photo"||m.media_type==="sticker"){
+   media=document.createElement("img");media.alt=tr("mediaAlt");media.loading="lazy";
+  }else if(m.media_type==="video"||m.media_type==="animation"||m.media_type==="video_note"||m.media_type==="video_sticker"){
+   media=document.createElement("video");media.controls=true;media.playsInline=true;media.preload="metadata";
+  }else if(m.media_type==="audio"||m.media_type==="voice"){
+   media=createCustomAudioPlayer(url,m,()=>showMediaLoadError(m,b,loading,attempt));
+  }else{
+   const link=document.createElement("a");link.href=url;link.target="_blank";link.rel="noopener";link.textContent=m.media_file_name||tr("openFile");link.style.color="var(--blue)";b.insertBefore(link,b.firstChild);return;
+  }
+  media.classList.add("message-media");
+  if(media instanceof HTMLMediaElement){media.src=url;media.addEventListener("error",()=>showMediaLoadError(m,b,loading,attempt),{once:true});}
+  else media.addEventListener("error",()=>showMediaLoadError(m,b,loading,attempt),{once:true});
+  b.insertBefore(media,b.firstChild);
+ }catch(error){showMediaLoadError(m,b,loading,attempt,error);}
+}
+function showMediaLoadError(m,b,loading,attempt,error){
+ if(!b.isConnected)return;
+ const media=b.querySelector(".message-media,.voice-player");if(media)media.remove();
+ if(!loading.isConnected){loading=document.createElement("div");loading.className="media-loading";b.insertBefore(loading,b.firstChild);}
+ loading.textContent=currentLang==="ru"?"Не удалось загрузить медиафайл.":"Could not load media.";
+ const old=b.querySelector(".media-retry-btn");if(old)old.remove();
+ mediaRetryButton(m.id,b,loading,attempt);
+ if(error)console.warn("Media loading failed:",m.id,error);
+}
 function formatAudioTime(value){
  if(!Number.isFinite(value)||value<0)return "0:00";
  const seconds=Math.floor(value);
  return Math.floor(seconds/60)+":"+String(seconds%60).padStart(2,"0");
 }
-function createCustomAudioPlayer(url,m){
+function createCustomAudioPlayer(url,m,onMediaError){
  const wrap=document.createElement("div");wrap.className="voice-player";
  const audio=document.createElement("audio");audio.preload="metadata";audio.src=url;audio.playsInline=true;
  const play=document.createElement("button");play.type="button";play.className="voice-play";play.textContent="▶";play.setAttribute("aria-label",currentLang==="ru"?"Воспроизвести":"Play");play.disabled=true;
@@ -331,7 +374,7 @@ function createCustomAudioPlayer(url,m){
  audio.addEventListener("loadedmetadata",()=>{duration.textContent=formatAudioTime(audio.duration);play.disabled=false;progress.disabled=false;});
  audio.addEventListener("timeupdate",()=>{current.textContent=formatAudioTime(audio.currentTime);if(Number.isFinite(audio.duration)&&audio.duration>0)progress.value=String(Math.round(audio.currentTime/audio.duration*1000));});
  audio.addEventListener("ended",()=>{audio.currentTime=0;progress.value="0";current.textContent="0:00";});
- audio.addEventListener("error",()=>{title.textContent=currentLang==="ru"?"Не удалось загрузить аудио":"Could not load audio";play.disabled=true;});
+ audio.addEventListener("error",()=>{title.textContent=currentLang==="ru"?"Не удалось загрузить аудио":"Could not load audio";play.disabled=true;if(onMediaError)onMediaError();});
  progress.addEventListener("input",()=>{if(Number.isFinite(audio.duration)&&audio.duration>0){audio.currentTime=(Number(progress.value)/1000)*audio.duration;}});
  volume.addEventListener("input",()=>{audio.volume=Number(volume.value);});
  audio.volume=0.85;
@@ -345,21 +388,7 @@ async function renderMessages(ms){
   const b=document.createElement("div");b.className="bubble "+(m.direction==="outgoing"?"outgoing":"incoming");
   if(m.media_type&&m.id){
    const loading=document.createElement("div");loading.className="media-loading";loading.textContent=tr("mediaLoading");b.append(loading);
-   fetchMediaUrl(m.id).then(url=>{
-    if(!b.isConnected)return;
-    loading.remove();
-    let media;
-    if(m.media_type==="photo"||m.media_type==="sticker"){
-     media=document.createElement("img");media.alt=tr("mediaAlt");media.loading="lazy";
-    }else if(m.media_type==="video"||m.media_type==="animation"||m.media_type==="video_note"||m.media_type==="video_sticker"){
-     media=document.createElement("video");media.controls=true;media.playsInline=true;
-    }else if(m.media_type==="audio"||m.media_type==="voice"){
-     media=createCustomAudioPlayer(url,m);
-    }else{
-     const link=document.createElement("a");link.href=url;link.target="_blank";link.rel="noopener";link.textContent=m.media_file_name||tr("openFile");link.style.color="var(--blue)";b.insertBefore(link,b.firstChild);media=null;
-    }
-    if(media){media.classList.add("message-media");if(media instanceof HTMLMediaElement)media.src=url;b.insertBefore(media,b.firstChild);}
-   }).catch(()=>{loading.textContent=tr("mediaUnavailable");});
+   loadMessageMedia(m,b,loading);
   }
   const body=document.createElement("div");body.className=m.media_type?"media-caption":"";body.textContent=m.text||"";
   if(body.textContent)b.append(body);
