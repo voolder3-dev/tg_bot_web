@@ -302,7 +302,7 @@ body[data-mode="light"][data-theme] .theme-picker select{color:var(--text);backg
 .message-context-menu button:disabled{opacity:.35;cursor:not-allowed}
 .overlay-modal{position:fixed;inset:0;z-index:220;display:grid;place-items:center;padding:20px;background:#050711d9;backdrop-filter:blur(12px)}.overlay-modal[hidden]{display:none}.modal-card{width:min(720px,100%);max-height:min(82vh,760px);overflow:hidden;border:1px solid var(--border);border-radius:19px;background:var(--panel);box-shadow:0 24px 90px #0009;display:flex;flex-direction:column;animation:appear .2s ease both}.modal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 16px;border-bottom:1px solid var(--border)}.modal-head strong{font-size:13px}.modal-body{padding:14px;overflow:auto;min-height:0}.global-search-input{width:100%;padding:12px;border:1px solid var(--border);border-radius:11px;background:var(--field);color:var(--text);outline:none}.search-results{display:grid;gap:7px;margin-top:12px}.search-result{width:100%;text-align:left;padding:11px;border:1px solid var(--border);border-radius:11px;background:color-mix(in srgb,var(--panel) 88%,var(--bg));color:var(--text);cursor:pointer}.search-result:hover{border-color:var(--purple);transform:translateY(-1px)}.search-result strong{display:block;font-size:11px;margin-bottom:4px}.search-result span{font-size:11px;color:var(--muted);overflow-wrap:anywhere}
 .media-viewer-content{display:grid;place-items:center;min-height:240px;max-height:70vh;padding:12px}.media-viewer-content img,.media-viewer-content video{max-width:100%;max-height:66vh;object-fit:contain;border-radius:12px}.media-viewer-content audio{width:min(460px,100%)}
-.emoji-picker{position:absolute;z-index:100;left:14px;bottom:76px;width:min(330px,calc(100vw - 40px));padding:10px;border:1px solid var(--border);border-radius:15px;background:var(--panel);box-shadow:0 15px 45px #0009}.emoji-picker[hidden]{display:none}.emoji-picker-tabs{display:flex;gap:6px;margin-bottom:8px}.emoji-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}.emoji-grid button{border:0;border-radius:8px;background:transparent;padding:6px 2px;font-size:20px;cursor:pointer}.emoji-grid button:hover{background:color-mix(in srgb,var(--purple) 18%,var(--panel));transform:scale(1.12)}.sticker-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;max-height:230px;overflow:auto}.sticker-grid button{height:66px;border:1px solid var(--border);border-radius:9px;background:color-mix(in srgb,var(--panel) 85%,var(--bg));cursor:pointer}.sticker-grid img{width:100%;height:100%;object-fit:contain}.sticker-grid .empty{grid-column:1/-1}
+.emoji-picker{position:absolute;z-index:100;left:14px;bottom:76px;width:min(330px,calc(100vw - 40px));padding:10px;border:1px solid var(--border);border-radius:15px;background:var(--panel);box-shadow:0 15px 45px #0009}.emoji-picker[hidden]{display:none}.emoji-picker-tabs{display:flex;gap:6px;margin-bottom:8px}.emoji-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}.emoji-grid button{border:0;border-radius:8px;background:transparent;padding:6px 2px;font-size:20px;cursor:pointer}.emoji-grid button:hover{background:color-mix(in srgb,var(--purple) 18%,var(--panel));transform:scale(1.12)}.sticker-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;max-height:230px;overflow:auto}.sticker-grid button{height:66px;border:1px solid var(--border);border-radius:9px;background:color-mix(in srgb,var(--panel) 85%,var(--bg));cursor:pointer}.sticker-grid img,.sticker-grid video{width:100%;height:100%;object-fit:contain}.sticker-grid .sticker-animation{width:100%;height:100%;display:grid;place-items:center}.sticker-grid .empty{grid-column:1/-1}.bubble .sticker-animation{width:min(100%,220px);height:180px;display:grid;place-items:center}.bubble .sticker-animation svg{max-width:100%;max-height:100%}
 .file-chip{display:flex;align-items:center;gap:9px;max-width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:11px;background:color-mix(in srgb,var(--purple) 9%,var(--panel));font-size:11px}.file-chip[hidden]{display:none}.file-chip-name{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.file-chip-size{color:var(--muted);white-space:nowrap}.file-chip button{border:0;background:transparent;color:var(--muted);font-size:17px;cursor:pointer}
 @keyframes featurePop{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 .search-result,.chat-fav,.icon-btn,.chat-filter,.emoji-picker button{transition:transform .18s ease,background .18s ease,border-color .18s ease}
@@ -371,6 +371,7 @@ body[data-mode="light"][data-theme] .theme-picker select{color:var(--text);backg
   </div>
  </div>
 </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js" defer></script>
 <script>
 const $ = id => document.getElementById(id);
 
@@ -724,6 +725,23 @@ function mediaRetryButton(messageId,b,loading,attempt){
  retry.addEventListener("click",()=>{retry.disabled=true;retry.textContent=currentLang==="ru"?"Загружаю…":"Loading…";loadMessageMedia(messageId,b,loading,attempt+1);});
  b.insertBefore(retry,loading.nextSibling);
 }
+async function loadTgsSticker(url,container){
+ if(!window.lottie)throw new Error(currentLang==="ru"?"Не загрузился проигрыватель анимации.":"Animation player did not load.");
+ if(typeof DecompressionStream==="undefined")throw new Error("This browser cannot unpack TGS stickers.");
+ const response=await fetch(url);if(!response.ok)throw new Error("Sticker download failed.");
+ const compressed=await response.arrayBuffer();
+ const stream=new Blob([compressed]).stream().pipeThrough(new DecompressionStream("gzip"));
+ const animationData=await new Response(stream).json();
+ if(!container.isConnected)return null;
+ const animation=window.lottie.loadAnimation({container,renderer:"svg",loop:true,autoplay:true,animationData});
+ container._lottieAnimation=animation;
+ return animation;
+}
+function makeStickerPreview(format,url){
+ if(format==="animated_sticker"){const el=document.createElement("div");el.className="sticker-animation";loadTgsSticker(url,el).catch(()=>{el.textContent="⚠";});return el;}
+ if(format==="video_sticker"){const el=document.createElement("video");el.src=url;el.autoplay=true;el.loop=true;el.muted=true;el.playsInline=true;return el;}
+ const el=document.createElement("img");el.src=url;el.alt="Sticker";return el;
+}
 async function loadMessageMedia(m,b,loading,attempt=0){
  if(!b.isConnected)return;
  loading.textContent=tr("mediaLoading");
@@ -733,10 +751,13 @@ async function loadMessageMedia(m,b,loading,attempt=0){
   if(!b.isConnected)return;
   loading.remove();
   let media;
-  if(m.media_type==="photo"||m.media_type==="sticker"){
+  if(m.media_type==="animated_sticker"){
+   media=document.createElement("div");media.className="message-media sticker-animation";b.insertBefore(media,b.firstChild);await loadTgsSticker(url,media);return;
+  }else if(m.media_type==="photo"||m.media_type==="sticker"){
    media=document.createElement("img");media.alt=tr("mediaAlt");media.loading="lazy";
   }else if(m.media_type==="video"||m.media_type==="animation"||m.media_type==="video_note"||m.media_type==="video_sticker"){
    media=document.createElement("video");media.controls=true;media.playsInline=true;media.preload="metadata";
+   if(m.media_type==="video_sticker"){media.autoplay=true;media.loop=true;media.muted=true;}
   }else if(m.media_type==="audio"||m.media_type==="voice"){
    media=createCustomAudioPlayer(url,m,()=>showMediaLoadError(m,b,loading,attempt));
   }else{
@@ -916,7 +937,8 @@ async function openMediaViewer(message){
  try{
   const url=await fetchMediaUrl(message.id);if(currentViewerMessage!==message)return;box.replaceChildren();
   let element;
-  if(["video","animation","video_note","video_sticker"].includes(message.media_type)){element=document.createElement("video");element.controls=true;element.autoplay=true;}
+  if(message.media_type==="animated_sticker"){element=document.createElement("div");element.className="sticker-animation";box.append(element);await loadTgsSticker(url,element);return;}
+  if(["video","animation","video_note","video_sticker"].includes(message.media_type)){element=document.createElement("video");element.controls=true;element.autoplay=true;if(message.media_type==="video_sticker"){element.loop=true;element.muted=true;}}
   else if(["voice","audio"].includes(message.media_type)){element=document.createElement("audio");element.controls=true;element.autoplay=true;}
   else{element=document.createElement("img");element.alt=message.text||"Media";}
   element.src=url;box.append(element);
@@ -1103,9 +1125,9 @@ async function loadRecentStickers(){
   const data=await api("/api/stickers");grid.replaceChildren();
   if(!data.stickers?.length){const empty=document.createElement("div");empty.className="empty";empty.textContent=currentLang==="ru"?"Здесь появятся стикеры, которые присылали в ваши чаты.":"Stickers received in your chats will appear here.";grid.append(empty);return;}
   data.stickers.forEach(sticker=>{
-   const button=document.createElement("button");button.type="button";button.title=sticker.text||"Sticker";const image=document.createElement("img");image.alt="Sticker";
-   fetchMediaUrl(sticker.id).then(url=>{if(image.isConnected)image.src=url;}).catch(()=>{image.alt="⚠";});
-   button.append(image);button.addEventListener("click",async()=>{button.disabled=true;try{await api("/api/send-sticker",{method:"POST",body:JSON.stringify({chat_id:activeChatId,file_id:sticker.sticker_file_id||sticker.media_file_id})});$("emojiPicker").hidden=true;playSendSound();await refreshAll();toast(currentLang==="ru"?"Стикер отправлен.":"Sticker sent.");}catch(error){toast(error.message);}finally{button.disabled=false;}});
+   const button=document.createElement("button");button.type="button";button.title=sticker.text||"Sticker";
+   fetchMediaUrl(sticker.id).then(url=>{if(button.isConnected){const preview=makeStickerPreview(sticker.media_type,url);button.append(preview);}}).catch(()=>{button.textContent="⚠";});
+   button.addEventListener("click",async()=>{button.disabled=true;try{await api("/api/send-sticker",{method:"POST",body:JSON.stringify({chat_id:activeChatId,file_id:sticker.sticker_file_id||sticker.media_file_id})});$("emojiPicker").hidden=true;playSendSound();await refreshAll();toast(currentLang==="ru"?"Стикер отправлен.":"Sticker sent.");}catch(error){toast(error.message);}finally{button.disabled=false;}});
    grid.append(button);
   });
  }catch(error){grid.replaceChildren();const failed=document.createElement("div");failed.className="empty";failed.textContent=error.message;grid.append(failed);}
