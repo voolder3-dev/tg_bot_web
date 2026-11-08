@@ -335,8 +335,9 @@ async function loadMessageMedia(m,b,loading,attempt=0){
    const link=document.createElement("a");link.href=url;link.target="_blank";link.rel="noopener";link.textContent=m.media_file_name||tr("openFile");link.style.color="var(--blue)";b.insertBefore(link,b.firstChild);return;
   }
   media.classList.add("message-media");
-  if(media instanceof HTMLMediaElement){media.src=url;media.addEventListener("error",()=>showMediaLoadError(m,b,loading,attempt),{once:true});}
-  else media.addEventListener("error",()=>showMediaLoadError(m,b,loading,attempt),{once:true});
+  if(media instanceof HTMLMediaElement)media.src=url;
+  else if(media instanceof HTMLImageElement)media.src=url;
+  if(media instanceof HTMLMediaElement||media instanceof HTMLImageElement)media.addEventListener("error",()=>showMediaLoadError(m,b,loading,attempt),{once:true});
   b.insertBefore(media,b.firstChild);
  }catch(error){showMediaLoadError(m,b,loading,attempt,error);}
 }
