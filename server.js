@@ -497,6 +497,44 @@ app.post("/api/pin-message", requireAdmin, async (req, res) => {
   } catch (error) { res.status(error.status || 502).json({ ok: false, error: error.message || "Не удалось закрепить сообщение." }); }
 });
 
+app.post("/api/unpin-message", requireAdmin, async (req, res) => {
+  const chatId = String(req.body?.chat_id || "");
+  const messageId = req.body?.message_id ? Number(req.body.message_id) : undefined;
+  if (!/^-?\\d+$/.test(chatId) || (messageId !== undefined && (!Number.isSafeInteger(messageId) || messageId < 1))) return res.status(400).json({ ok: false, error: "Проверь Chat ID и ID сообщения." });
+  try {
+    const payload = { chat_id: chatId };
+    if (messageId) payload.message_id = messageId;
+    const result = await telegram("unpinChatMessage", payload);
+    res.json({ ok: true, result });
+  } catch (error) { res.status(error.status || 502).json({ ok: false, error: error.message || "Не удалось открепить сообщение." }); }
+});
+
+app.get("/api/chats/:chatId/pinned", requireAdmin, async (req, res) => {
+  const chatId = req.params.chatId;
+  if (!/^-?\\d+$/.test(chatId)) return res.status(400).json({ ok: false, error: "Некорректный Chat ID." });
+  try {
+    const chat = await telegram("getChat", { chat_id: chatId });
+    res.json({ ok: true, pinned_message: chat.pinned_message || null });
+  } catch (error) { res.status(error.status || 502).json({ ok: false, error: error.message || "Не удалось загрузить закреплённое сообщение." }); }
+});
+
+app.delete("/api/chats/:chatId/messages/:messageId", requireAdmin, async (req, res) => {
+  const chatId = req.params.chatId;
+  const localId = req.params.messageId;
+  if (!/^-?\\d+$/.test(chatId) || !/^\\d+$/.test(localId)) return res.status(400).json({ ok: false, error: "Некорректный ID сообщения." });
+  try {
+    const found = await pool.query("SELECT telegram_message_id FROM messages WHERE id = $1 AND chat_id = $2", [localId, chatId]);
+    if (!found.rows.length) return res.status(404).json({ ok: false, error: "Сообщение уже удалено или не найдено." });
+    const telegramId = found.rows[0].telegram_message_id;
+    if (telegramId) await telegram("deleteMessage", { chat_id: chatId, message_id: Number(telegramId) });
+    await pool.query("DELETE FROM messages WHERE id = $1 AND chat_id = $2", [localId, chatId]);
+    await pool.query("UPDATE chats SET last_message_at = (SELECT MAX(created_at) FROM messages WHERE chat_id = $1) WHERE chat_id = $1", [chatId]);
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(error.status || 502).json({ ok: false, error: error.message || "Не удалось удалить сообщение. Telegram может запрещать удаление старых сообщений." });
+  }
+});
+
 app.post("/api/webhook/register", requireAdmin, async (req, res) => {
   const publicUrl = String(process.env.RENDER_EXTERNAL_URL || ("https://" + req.get("host"))).replace(/\/$/, "");
   if (!/^https:\/\//i.test(publicUrl)) {
