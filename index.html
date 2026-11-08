@@ -474,7 +474,7 @@ async function loadMessages({force=false}={}){
  if(!force&&activeAudio){pendingMessages=next;return;}
  pendingMessages=null;await renderMessages(next);
 }
-async function selectChat(id){activeChatId=String(id);currentMessages=[];pendingMessages=null;setReplyTarget(null);setConversationTab("chat");const c=chats.find(x=>String(x.chat_id)===activeChatId);$("activeName").textContent=c?displayName(c):tr("chooseChatName");$("activeId").textContent=tr("chatId")+activeChatId;$("messageText").disabled=false;$("sendBtn").disabled=false;$("attachBtn").disabled=false;$("voiceBtn").disabled=false;$("clearChatBtn").disabled=false;renderChats();await loadMessages();}
+async function selectChat(id){activeChatId=String(id);currentMessages=[];pendingMessages=null;setReplyTarget(null);setConversationTab("chat");const c=chats.find(x=>String(x.chat_id)===activeChatId);$("activeName").textContent=c?displayName(c):tr("chooseChatName");$("activeId").textContent=tr("chatId")+activeChatId;$("messageText").disabled=false;$("sendBtn").disabled=false;$("attachBtn").disabled=false;$("voiceBtn").disabled=false;$("clearChatBtn").disabled=false;renderChats();await loadMessages({force:true});}
 async function refreshAll(){if(busy||$("dashboard").hidden)return;busy=true;try{await loadChats({detect:true});await loadMessages();}catch(e){if(!e.message.includes("Войди"))toast(e.message);}finally{busy=false;}}
 $("loginForm").addEventListener("submit",async e=>{
  e.preventDefault();$("loginBtn").disabled=true;$("loginError").textContent="";
