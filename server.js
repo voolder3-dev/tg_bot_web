@@ -385,7 +385,7 @@ app.post("/api/send-media", requireAdmin, upload.single("file"), async (req, res
 app.post("/api/send-voice", requireAdmin, upload.single("voice"), async (req, res) => {
   const chatId = String(req.body?.chat_id || "");
   const file = req.file;
-  if (!/^-?\\d+$/.test(chatId) || !file) {
+  if (!/^-?\d+$/.test(chatId) || !file) {
     return res.status(400).json({ ok: false, error: "Запиши голосовое сообщение и выбери чат." });
   }
   if (!file.mimetype.startsWith("audio/")) {
