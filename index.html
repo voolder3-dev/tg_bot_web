@@ -390,6 +390,7 @@ let chats = [], activeChatId = null, refreshTimer = null, busy = false, refreshQ
 let currentMessages=[];let pendingMessages=null;let replyTarget=null;let currentConversationTab="chat";let pinnedMessage=null;let contextMessage=null;
 let knownIncomingMessages = new Map();
 let chatsWithFreshMessages = new Set();
+let chatsMovedToBottom = new Set();
 let scrollChatListToBottom = false;
 let notificationAudio = null;
 let notificationPromptShown = false;
@@ -452,7 +453,6 @@ function notifyIncoming(chat){
  }
 }
 function checkForNewMessages(nextChats){
- const chatsToMove=[];
  nextChats.forEach(chat=>{
   const id=String(chat.chat_id),messageId=chat.last_message_id==null?null:String(chat.last_message_id);
   const previous=knownIncomingMessages.get(id);
@@ -460,17 +460,23 @@ function checkForNewMessages(nextChats){
    notifyIncoming(chat);
    if(previous!==undefined){
     chatsWithFreshMessages.add(id);
-    chatsToMove.push(id);
+    // Сохраняем перемещение чата вниз между фоновыми обновлениями.
+    chatsMovedToBottom.delete(id);
+    chatsMovedToBottom.add(id);
     scrollChatListToBottom=true;
    }
   }
   knownIncomingMessages.set(id,messageId);
  });
- // Новые входящие чаты перемещаем вниз списка, чтобы обновление не уносило их из поля зрения.
- chatsToMove.forEach(id=>{
+ // API каждый раз возвращает свой порядок (обычно по последней активности).
+ // Повторно применяем локальный порядок, чтобы такие чаты не прыгали наверх на следующем опросе.
+ for(const id of chatsMovedToBottom){
   const index=nextChats.findIndex(chat=>String(chat.chat_id)===id);
   if(index>=0)nextChats.push(nextChats.splice(index,1)[0]);
- });
+ }
+ // Удаляем из порядка чаты, которых больше нет в ответе API.
+ const presentIds=new Set(nextChats.map(chat=>String(chat.chat_id)));
+ chatsMovedToBottom=new Set([...chatsMovedToBottom].filter(id=>presentIds.has(id)));
 }
 function unlockDashboardAudio(){
  if(notificationAudio)return;
