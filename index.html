@@ -565,8 +565,8 @@ async function switchBotProfile(server){
   const response=await fetch(bot.server+"/api/session",{headers:{"X-Admin-Key":bot.key}});
   const data=await response.json().catch(()=>({}));
   if(!response.ok||!data.ok)throw new Error(data.error||"Не удалось подключиться к боту.");
-  localStorage.setItem("tg_dashboard_server",bot.server);localStorage.setItem("tg_dashboard_key",bot.key);
-  chats=[];activeChatId=null;currentMessages=[];chatElements.clear();showDashboard();$("activeName").textContent=tr("chooseChat");$("activeId").textContent=tr("conversationHere");$("messages").replaceChildren();
+  localStorage.setItem("tg_dashboard_server",bot.server);localStorage.setItem("tg_dashboard_key",bot.key);loadLocalChatState();
+  chats=[];activeChatId=null;currentMessages=[];chatElements.clear();$("chatList").replaceChildren();$("messages").replaceChildren();showDashboard();$("activeName").textContent=tr("chooseChat");$("activeId").textContent=tr("conversationHere");$("messages").replaceChildren();
   $("connectedServer").textContent=bot.server;await loadChats();updateDetailsPanel();toast(currentLang==="ru"?"Подключено: "+bot.name:"Connected: "+bot.name);
  }catch(error){toast(error.message);renderBotProfiles();}
 }
@@ -1156,7 +1156,7 @@ $("sendForm").addEventListener("submit",async e=>{
  }catch(err){toast(err.message);}
  finally{$("sendBtn").disabled=!activeChatId;$("attachBtn").disabled=!activeChatId;$("emojiBtn").disabled=!activeChatId;$("voiceBtn").disabled=!activeChatId;$("sendProgress").textContent="";}
 });
-(async()=>{loadBotProfiles();loadLocalChatState();
+loadBotProfiles();loadLocalChatState();
 (async()=>{const cfg=connection();if(cfg.server&&cfg.key){$("serverUrl").value=cfg.server;try{await api("/api/session");showDashboard();applyLanguage(currentLang);await loadChats();return;}catch(_){sessionStorage.removeItem("tg_dashboard_server");sessionStorage.removeItem("tg_dashboard_key");}}showLogin();applyLanguage(currentLang);})();
 </script>
 </body>
