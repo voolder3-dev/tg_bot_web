@@ -227,12 +227,13 @@ app.post("/telegram/webhook", async (req, res) => {
     await pool.query(
       `INSERT INTO messages
        (chat_id, telegram_message_id, direction, text, sender_name, media_file_id, media_type, media_mime_type, media_file_name, reply_to_message_id, created_at)
-       VALUES ($1, $2, 'incoming', $3, $4, $5, $6, $7, $8, to_timestamp($9))
+       VALUES ($1, $2, 'incoming', $3, $4, $5, $6, $7, $8, $9, to_timestamp($10))
        ON CONFLICT DO NOTHING`,
       [
         String(chat.id), message.message_id || null, String(textValue).slice(0, 4096),
         [from.first_name, from.last_name].filter(Boolean).join(" ") || from.username || null,
         media?.fileId || null, media?.type || null, media?.mime || null, media?.name || null,
+        message.reply_to_message?.message_id || null,
         Number(message.date) || Math.floor(Date.now() / 1000)
       ]
     );
