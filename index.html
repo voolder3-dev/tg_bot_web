@@ -700,6 +700,48 @@ async function loadChatAvatar(chatId,element){
  try{const cfg=connection();const response=await fetch(cfg.server+"/api/chats/"+encodeURIComponent(key)+"/avatar",{headers:{"X-Admin-Key":cfg.key},cache:"force-cache"});if(!response.ok)throw new Error("No avatar");const blob=await response.blob();if(!blob.size)throw new Error("Empty avatar");const url=URL.createObjectURL(blob);chatAvatarCache.set(key,url);if(element.isConnected&&element.dataset.loadedFor===key){element.textContent="";element.style.backgroundImage=`url("${url}")`;element.style.backgroundSize="cover";element.style.backgroundPosition="center";}}
  catch(_){chatAvatarCache.set(key,null);}
 }
+const stickerDeviceCacheName="silversmp-device-media-v1";
+let stickerDeviceDbPromise=null;
+function openStickerDeviceCache(){
+ if(!("indexedDB" in window))return Promise.resolve(null);
+ if(!stickerDeviceDbPromise)stickerDeviceDbPromise=new Promise(resolve=>{
+  const request=indexedDB.open(stickerDeviceCacheName,1);
+  request.onupgradeneeded=()=>{const db=request.result;if(!db.objectStoreNames.contains("files"))db.createObjectStore("files",{keyPath:"key"});};
+  request.onsuccess=()=>resolve(request.result);
+  request.onerror=()=>resolve(null);
+ });
+ return stickerDeviceDbPromise;
+}
+async function getStickerDeviceBlob(key){
+ try{
+  const db=await openStickerDeviceCache();if(!db)return null;
+  return await new Promise(resolve=>{
+   const tx=db.transaction("files","readwrite"),store=tx.objectStore("files"),request=store.get(key);
+   request.onsuccess=()=>{const item=request.result;if(!item?.blob){resolve(null);return;}item.usedAt=Date.now();store.put(item);resolve(item.blob);};
+   request.onerror=()=>resolve(null);
+  });
+ }catch(_){return null;}
+}
+async function saveStickerDeviceBlob(key,blob){
+ try{
+  const db=await openStickerDeviceCache();if(!db)return;
+  await new Promise(resolve=>{
+   const tx=db.transaction("files","readwrite"),store=tx.objectStore("files");
+   store.put({key,blob,usedAt:Date.now()});
+   const all=store.getAll();
+   all.onsuccess=()=>{
+    const items=all.result||[];
+    if(items.length>180){items.sort((a,b)=>(a.usedAt||0)-(b.usedAt||0));items.slice(0,items.length-150).forEach(item=>store.delete(item.key));}
+   };
+   tx.oncomplete=()=>resolve();tx.onerror=()=>resolve();tx.onabort=()=>resolve();
+  });
+ }catch(_){}
+}
+async function cachedStickerObjectUrl(key,loadBlob){
+ const cached=await getStickerDeviceBlob(key);
+ if(cached?.size)return URL.createObjectURL(cached);
+ const blob=await loadBlob();await saveStickerDeviceBlob(key,blob);return URL.createObjectURL(blob);
+}
 async function fetchMediaUrl(messageId,{force=false}={}){
  const key=String(messageId);
  if(force&&mediaUrlCache.has(key)){URL.revokeObjectURL(mediaUrlCache.get(key));mediaUrlCache.delete(key);}
@@ -708,10 +750,12 @@ async function fetchMediaUrl(messageId,{force=false}={}){
  const request=(async()=>{
   const cfg=connection();const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),60000);
   try{
+   const url=await cachedStickerObjectUrl("message:"+key,async()=>{
    const response=await fetch(cfg.server+"/api/media/"+encodeURIComponent(messageId),{headers:{"X-Admin-Key":cfg.key},cache:"no-store",signal:controller.signal});
    if(!response.ok)throw new Error("HTTP "+response.status);
-   const blob=await response.blob();if(!blob.size)throw new Error("Empty media response");
-   const url=URL.createObjectURL(blob);mediaUrlCache.set(key,url);
+   const blob=await response.blob();if(!blob.size)throw new Error("Empty media response");return blob;
+  });
+   mediaUrlCache.set(key,url);
    while(mediaUrlCache.size>80){const oldest=mediaUrlCache.keys().next().value;URL.revokeObjectURL(mediaUrlCache.get(oldest));mediaUrlCache.delete(oldest);}
    return url;
   }catch(error){if(error.name==="AbortError")throw new Error(currentLang==="ru"?"Превышено время загрузки (60 секунд).":"Media loading timed out (60 seconds).");throw error;}
@@ -1120,10 +1164,12 @@ function buildEmojiPicker(){
  const grid=$("emojiGrid");grid.replaceChildren();quickEmojis.forEach(emoji=>{const button=document.createElement("button");button.type="button";button.textContent=emoji;button.addEventListener("click",()=>{const input=$("messageText"),start=input.selectionStart,end=input.selectionEnd;input.setRangeText(emoji,start,end,"end");input.focus();$("emojiPicker").hidden=true;});grid.append(button);});
 }
 async function fetchStickerLibraryPreview(itemId){
- const cfg=connection();const response=await fetch(cfg.server+"/api/sticker-library/media/"+encodeURIComponent(itemId),{headers:{"X-Admin-Key":cfg.key},cache:"no-store"});
- if(!response.ok)throw new Error("HTTP "+response.status);
- const blob=await response.blob();if(!blob.size)throw new Error("Empty sticker preview");
- return URL.createObjectURL(blob);
+ const cfg=connection();
+ return cachedStickerObjectUrl("library:"+String(itemId),async()=>{
+  const response=await fetch(cfg.server+"/api/sticker-library/media/"+encodeURIComponent(itemId),{headers:{"X-Admin-Key":cfg.key},cache:"no-store"});
+  if(!response.ok)throw new Error("HTTP "+response.status);
+  const blob=await response.blob();if(!blob.size)throw new Error("Empty sticker preview");return blob;
+ });
 }
 function makePackCard(pack){
  const card=document.createElement("button");card.type="button";card.className="sticker-pack-card";
