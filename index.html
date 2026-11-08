@@ -831,7 +831,7 @@ function makeStickerPreview(format,url){
 }
 async function loadMessageMedia(m,b,loading,attempt=0){
  if(!b.isConnected)return;
- loading.textContent=tr("mediaLoading");
+ if(!loading.classList.contains("media-glass-placeholder"))loading.textContent=tr("mediaLoading");
  const retry=b.querySelector(".media-retry-btn");if(retry)retry.remove();
  try{
   const url=await fetchMediaUrl(m.id,{force:attempt>0});
