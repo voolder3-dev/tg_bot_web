@@ -505,6 +505,81 @@ app.post("/api/send", requireAdmin, async (req, res) => {
 });
 
 
+app.get("/api/search", requireAdmin, async (req, res) => {
+  const query = String(req.query.q || "").trim().slice(0, 120);
+  if (query.length < 2) return res.json({ ok: true, results: [] });
+  try {
+    const result = await pool.query(
+      `SELECT m.id::text AS id, m.chat_id::text AS chat_id, m.telegram_message_id,
+              m.direction, m.text, m.media_type, m.created_at,
+              COALESCE(c.custom_name, c.title, NULLIF(CONCAT_WS(' ', c.first_name, c.last_name), ''), c.username, c.chat_id::text) AS chat_name
+       FROM messages m JOIN chats c ON c.chat_id = m.chat_id
+       WHERE m.text ILIKE $1
+       ORDER BY m.created_at DESC LIMIT 80`,
+      ["%" + query + "%"]
+    );
+    res.json({ ok: true, results: result.rows });
+  } catch (error) {
+    console.error("Global message search failed:", error.message);
+    res.status(500).json({ ok: false, error: "Не удалось выполнить поиск по сообщениям." });
+  }
+});
+
+app.patch("/api/chats/:chatId/messages/:messageId", requireAdmin, async (req, res) => {
+  const chatId = req.params.chatId;
+  const localId = req.params.messageId;
+  const textValue = typeof req.body?.text === "string" ? req.body.text.trim() : "";
+  if (!/^-?\\d+$/.test(chatId) || !/^\\d+$/.test(localId) || !textValue || textValue.length > 4096) {
+    return res.status(400).json({ ok: false, error: "Проверь текст сообщения (от 1 до 4096 символов)." });
+  }
+  try {
+    const found = await pool.query(
+      "SELECT telegram_message_id, direction, created_at, media_type FROM messages WHERE id = $1 AND chat_id = $2",
+      [localId, chatId]
+    );
+    if (!found.rows.length) return res.status(404).json({ ok: false, error: "Сообщение не найдено." });
+    const message = found.rows[0];
+    if (message.direction !== "outgoing" || message.media_type || !message.telegram_message_id) {
+      return res.status(400).json({ ok: false, error: "Можно редактировать только отправленные текстовые сообщения." });
+    }
+    if (Date.now() - new Date(message.created_at).getTime() > 48 * 60 * 60 * 1000) {
+      return res.status(400).json({ ok: false, error: "Telegram разрешает редактировать это сообщение только в течение 48 часов." });
+    }
+    await telegram("editMessageText", { chat_id: chatId, message_id: Number(message.telegram_message_id), text: textValue });
+    await pool.query("UPDATE messages SET text = $3 WHERE id = $1 AND chat_id = $2", [localId, chatId, textValue]);
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(error.status || 502).json({ ok: false, error: error.message || "Не удалось отредактировать сообщение." });
+  }
+});
+
+app.post("/api/forward-message", requireAdmin, async (req, res) => {
+  const sourceChatId = String(req.body?.source_chat_id || "");
+  const targetChatId = String(req.body?.target_chat_id || "");
+  const messageId = Number(req.body?.message_id);
+  if (!/^-?\\d+$/.test(sourceChatId) || !/^-?\\d+$/.test(targetChatId) || !Number.isSafeInteger(messageId) || messageId < 1 || sourceChatId === targetChatId) {
+    return res.status(400).json({ ok: false, error: "Выбери другой чат для пересылки." });
+  }
+  try {
+    const sent = await telegram("copyMessage", { chat_id: targetChatId, from_chat_id: sourceChatId, message_id: messageId });
+    const chat = await pool.query("SELECT chat_type,title,username,first_name,last_name FROM chats WHERE chat_id=$1", [targetChatId]);
+    const info = chat.rows[0] || {};
+    await pool.query(
+      `INSERT INTO chats (chat_id, chat_type, title, username, first_name, last_name, last_message_at)
+       VALUES ($1,$2,$3,$4,$5,$6,NOW()) ON CONFLICT (chat_id) DO UPDATE SET last_message_at=NOW()`,
+      [targetChatId, info.chat_type || "private", info.title || null, info.username || null, info.first_name || null, info.last_name || null]
+    );
+    await pool.query(
+      `INSERT INTO messages (chat_id, telegram_message_id, direction, text, sender_name, created_at)
+       VALUES ($1,$2,'outgoing',$3,'Вы',NOW()) ON CONFLICT DO NOTHING`,
+      [targetChatId, sent.message_id, "[Пересланное сообщение]"]
+    );
+    res.json({ ok: true, message_id: sent.message_id });
+  } catch (error) {
+    res.status(error.status || 502).json({ ok: false, error: error.message || "Не удалось переслать сообщение." });
+  }
+});
+
 app.post("/api/pin-message", requireAdmin, async (req, res) => {
   const chatId = String(req.body?.chat_id || "");
   const messageId = Number(req.body?.message_id);
