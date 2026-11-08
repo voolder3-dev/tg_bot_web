@@ -257,6 +257,18 @@ body[data-theme] .conversation-tab.active{background:linear-gradient(110deg,colo
 body[data-theme] .pinned-card,body[data-theme] .voice-player{box-shadow:0 7px 22px #0002,inset 0 1px 0 #ffffff0b}
 @media(prefers-reduced-motion:reduce){body[data-theme],body[data-theme] *{transition:none!important}}
 
+ /* Keep the light palette above the premium dark-surface defaults */
+body[data-mode="light"][data-theme] .preferences-switch{background:var(--pref-bg);border-color:var(--border);box-shadow:0 8px 24px rgba(35,48,65,.1)}
+body[data-mode="light"][data-theme] .chat{background:transparent;border-color:transparent}
+body[data-mode="light"][data-theme] .chat:hover{background:color-mix(in srgb,var(--accent2) 8%,#fff)}
+body[data-mode="light"][data-theme] .chat.active{background:linear-gradient(100deg,color-mix(in srgb,var(--accent2) 17%,#fff),#fff);border-left-color:var(--purple)}
+body[data-mode="light"][data-theme] .bubble{background:#f8f9fb;color:var(--text);border-color:var(--border);box-shadow:0 2px 8px rgba(35,48,65,.05)}
+body[data-mode="light"][data-theme] .bubble.outgoing{background:color-mix(in srgb,var(--accent2) 15%,#fff);border-color:color-mix(in srgb,var(--accent2) 30%,var(--border))}
+body[data-mode="light"][data-theme] .messages{background:radial-gradient(ellipse at 15% 0%,color-mix(in srgb,var(--purple) 6%,transparent),transparent 48%),radial-gradient(ellipse at 90% 100%,color-mix(in srgb,var(--blue) 5%,transparent),transparent 42%)}
+body[data-mode="light"][data-theme] .conversation-head,body[data-mode="light"][data-theme] .panel-head{background:linear-gradient(110deg,color-mix(in srgb,var(--purple) 5%,#fff),color-mix(in srgb,var(--blue) 4%,#fff))}
+body[data-mode="light"][data-theme] .theme-picker select{color:var(--text);background-color:#fff}
+@media(prefers-reduced-motion:reduce){body[data-mode="light"],body[data-mode="light"] *{transition:none!important;animation:none!important}}
+
 </style>
 </head>
 <body>
