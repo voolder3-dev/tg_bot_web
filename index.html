@@ -187,6 +187,7 @@ function applyLanguage(lang){
 document.querySelectorAll(".lang-btn").forEach(b=>b.addEventListener("click",()=>applyLanguage(b.dataset.lang)));
 
 let chats = [], activeChatId = null, refreshTimer = null, busy = false;
+let currentMessages=[];let pendingMessages=null;let replyTarget=null;let currentConversationTab="chat";
 let knownIncomingMessages = new Map();
 let notificationAudio = null;
 let notificationPromptShown = false;
@@ -404,7 +405,6 @@ function createCustomAudioPlayer(url,m,onMediaError){
  return wrap;
 }
 let mediaObserver=null;
-let mediaObserver=null;
 function messageSignature(ms){return ms.map(m=>String(m.id)+":"+String(m.telegram_message_id)+":"+String(m.text||"")+":"+String(m.media_file_id||"")).join("|");}
 function setConversationTab(tab){
  currentConversationTab=tab;
@@ -416,7 +416,7 @@ function setReplyTarget(m){
  replyTarget=m;
  $("replyComposer").hidden=!m;
  $("replyComposerText").textContent=m?(m.text||("["+String(m.media_type||"сообщение")+"]")):"";
- $("messageText").focus();
+ if(m)$("messageText").focus();
 }
 function renderMediaGallery(){
  const gallery=$("mediaGallery");gallery.replaceChildren();
@@ -470,7 +470,6 @@ async function loadMessages({force=false}={}){
  const d=await api("/api/chats/"+encodeURIComponent(activeChatId)+"/messages");
  const next=d.messages||[];
  if(!force&&messageSignature(next)===messageSignature(currentMessages))return;
- const playing=$("messages").querySelector("audio:not([paused])");
  const activeAudio=Array.from($("messages").querySelectorAll("audio")).some(a=>!a.paused&&!a.ended);
  if(!force&&activeAudio){pendingMessages=next;return;}
  pendingMessages=null;await renderMessages(next);
