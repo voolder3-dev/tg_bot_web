@@ -40,6 +40,20 @@ h2{font-size:clamp(22px,4vw,30px);margin:0 0 7px;letter-spacing:-.8px}.sub{font-
 .file-status:empty{display:none}
 .bubble .media-label{font-weight:700;color:var(--blue);margin-bottom:4px}
 .bubble .message-media{display:block;max-width:min(100%,420px);max-height:360px;width:auto;height:auto;object-fit:contain;border-radius:10px;margin:2px 0 7px;background:#080b12}
+.bubble .message-media{max-width:min(100%,240px);max-height:210px;cursor:zoom-in}
+.conversation-tabs{display:flex;gap:7px;padding:9px 14px;border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--panel) 94%,var(--bg))}
+.conversation-tab{border:1px solid var(--border);background:transparent;color:var(--muted);padding:7px 13px;border-radius:9px;font-size:11px;font-weight:800;cursor:pointer}
+.conversation-tab.active{background:color-mix(in srgb,var(--accent) 18%,var(--panel));color:var(--text);border-color:var(--accent)}
+.reply-composer{display:flex;align-items:center;gap:8px;padding:8px 14px;background:color-mix(in srgb,var(--accent) 10%,var(--panel));border-top:1px solid var(--border);font-size:11px}
+.reply-composer[hidden]{display:none}.reply-composer-text{min-width:0;flex:1;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.reply-composer button,.bubble-action{border:1px solid var(--border);border-radius:8px;background:var(--panel);color:var(--text);padding:5px 8px;font-size:10px;cursor:pointer}
+.bubble-actions{display:flex;gap:5px;margin-top:7px;opacity:.75}.bubble-action:hover{border-color:var(--accent)}
+.media-gallery{padding:12px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:9px;align-content:start}
+.media-gallery[hidden]{display:none}.gallery-item{border:1px solid var(--border);border-radius:10px;padding:5px;background:var(--panel);cursor:pointer;min-width:0}
+.gallery-item img,.gallery-item video{width:100%;height:100px;object-fit:cover;border-radius:7px;background:var(--bg)}
+.gallery-item span{display:block;font-size:10px;color:var(--muted);padding:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.send-progress{flex:1 0 100%;font-size:11px;color:var(--accent);padding:0 4px;min-height:14px}
+
 .bubble video.message-media,.bubble audio.message-media{width:min(100%,420px);max-height:300px}
 .bubble .media-caption{margin-top:5px;white-space:pre-wrap;overflow-wrap:anywhere}
 .bubble .media-loading{font-size:11px;color:var(--muted);padding:8px 0}
@@ -116,8 +130,11 @@ body[data-theme] .toast{background:var(--panel);border-color:var(--border)}
   </section>
   <section class="panel conversation">
     <div class="conversation-head"><div><div class="person" id="activeName" data-i18n="chooseChat">Выбери чат</div><div class="muted" id="activeId" data-i18n="conversationHere">Переписка появится здесь</div></div><div class="conversation-actions"><button class="btn danger" id="clearChatBtn" type="button" disabled data-i18n="clearChat">Очистить чат</button><button class="btn secondary" id="refreshBtn" type="button" data-i18n="refresh">Обновить</button></div></div>
+    <div class="conversation-tabs"><button class="conversation-tab active" id="chatTabBtn" type="button">💬 Чат</button><button class="conversation-tab" id="mediaTabBtn" type="button">▦ Медиа</button></div>
     <div class="messages" id="messages"><div class="empty" data-i18n="noChatSelected">📭<br>Пока чат не выбран.</div></div>
-    <form class="composer" id="sendForm"><input id="mediaInput" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.zip" hidden><button class="attach-btn" id="attachBtn" type="button" disabled aria-label="Attach file" title="Прикрепить файл">＋</button><button class="voice-record-btn" id="voiceBtn" type="button" disabled aria-label="Записать голосовое" title="Записать голосовое">🎙</button><textarea class="textarea" id="messageText" maxlength="4096" placeholder="Напиши сообщение или подпись…" data-i18n-placeholder="messagePlaceholder" disabled></textarea><button class="btn" id="sendBtn" disabled data-i18n="send">Отправить</button><div class="voice-recorder-panel" id="voiceRecorderPanel" hidden><div class="voice-recorder-info"><span class="voice-recorder-title" data-i18n="voiceRecordingTitle">Идёт запись</span><span class="voice-recorder-timer" id="voiceTimer">00:00</span></div><div class="voice-wave" id="voiceWave" aria-label="Волна записи"></div><button class="voice-cancel" id="voiceCancelBtn" type="button" title="Отменить запись" aria-label="Отменить запись">×</button></div><div class="file-status" id="fileStatus" aria-live="polite"></div><div class="voice-status" id="voiceStatus" aria-live="polite"></div></form>
+    <div class="media-gallery" id="mediaGallery" hidden></div>
+    <div class="reply-composer" id="replyComposer" hidden><span>↩</span><span class="reply-composer-text" id="replyComposerText"></span><button id="cancelReplyBtn" type="button">×</button></div>
+    <form class="composer" id="sendForm"><input id="mediaInput" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.zip" hidden><button class="attach-btn" id="attachBtn" type="button" disabled aria-label="Attach file" title="Прикрепить файл">＋</button><button class="voice-record-btn" id="voiceBtn" type="button" disabled aria-label="Записать голосовое" title="Записать голосовое">🎙</button><textarea class="textarea" id="messageText" maxlength="4096" placeholder="Напиши сообщение или подпись…" data-i18n-placeholder="messagePlaceholder" disabled></textarea><button class="btn" id="sendBtn" disabled data-i18n="send">Отправить</button><div class="voice-recorder-panel" id="voiceRecorderPanel" hidden><div class="voice-recorder-info"><span class="voice-recorder-title" data-i18n="voiceRecordingTitle">Идёт запись</span><span class="voice-recorder-timer" id="voiceTimer">00:00</span></div><div class="voice-wave" id="voiceWave" aria-label="Волна записи"></div><button class="voice-cancel" id="voiceCancelBtn" type="button" title="Отменить запись" aria-label="Отменить запись">×</button></div><div class="send-progress" id="sendProgress" aria-live="polite"></div><div class="file-status" id="fileStatus" aria-live="polite"></div><div class="voice-status" id="voiceStatus" aria-live="polite"></div></form>
     <div class="hint" data-i18n="sendHint">Сообщения отправляются от имени твоего Telegram-бота. Пользователь должен предварительно начать диалог с ботом.</div>
   </section>
 </main>
