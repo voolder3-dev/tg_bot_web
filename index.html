@@ -1129,7 +1129,7 @@ function makePackCard(pack){
  const card=document.createElement("button");card.type="button";card.className="sticker-pack-card";
  const cover=document.createElement("span");cover.className="pack-cover-fallback";cover.textContent="🦆";card.append(cover);
  const info=document.createElement("span");info.style.minWidth="0";const title=document.createElement("strong");title.textContent=pack.title||pack.set_name;const count=document.createElement("small");count.textContent=(pack.sticker_count||0)+" стикеров";info.append(title,count);card.append(info);
- if(pack.cover_id){fetchStickerLibraryPreview(pack.cover_id).then(url=>{if(!card.isConnected)return;const img=document.createElement("img");img.src=url;img.alt="";cover.replaceWith(img);}).catch(()=>{});}
+ if(pack.cover_id&&String(pack.cover_preview_mime_type||"").startsWith("image/")){fetchStickerLibraryPreview(pack.cover_id).then(url=>{if(!card.isConnected)return;const img=document.createElement("img");img.src=url;img.alt="";cover.replaceWith(img);}).catch(()=>{});}
  card.addEventListener("click",()=>loadStickerPack(pack.id));return card;
 }
 async function loadStickerPacks(){
@@ -1148,7 +1148,7 @@ async function loadStickerPack(packId){
   const back=document.createElement("button");back.type="button";back.className="sticker-pack-back";back.textContent="← Ко всем наборам";back.addEventListener("click",()=>{$("stickerPackList").hidden=false;grid.hidden=true;});grid.append(back);
   data.stickers.forEach(sticker=>{
    const button=document.createElement("button");button.type="button";button.title=sticker.emoji||"Sticker";
-   fetchStickerLibraryPreview(sticker.id).then(url=>{if(button.isConnected)button.append(makeStickerPreview(sticker.media_type,url));}).catch(()=>{button.textContent="🦆";});
+   fetchStickerLibraryPreview(sticker.id).then(url=>{if(button.isConnected)button.append(makeStickerPreview(String(sticker.preview_mime_type||"").startsWith("image/")?"sticker":sticker.media_type,url));}).catch(()=>{button.textContent="🦆";});
    button.addEventListener("click",async()=>{button.disabled=true;try{await api("/api/send-sticker",{method:"POST",body:JSON.stringify({chat_id:activeChatId,file_id:sticker.file_id})});$("emojiPicker").hidden=true;playSendSound();await refreshAll();toast(currentLang==="ru"?"Стикер отправлен.":"Sticker sent.");}catch(error){toast(error.message);}finally{button.disabled=false;}});
    grid.append(button);
   });
