@@ -446,7 +446,7 @@ async function renderMessages(ms){
  }
  ms.forEach(m=>{
   const b=document.createElement("div");b.className="bubble "+(m.direction==="outgoing"?"outgoing":"incoming");b.dataset.messageId=m.id;
-  if(m.reply_to_message_id){const quote=document.createElement("div");quote.className="media-loading";quote.textContent="↪ Ответ на сообщение";b.append(quote);}
+  if(m.reply_to_message_id){const quote=document.createElement("div");quote.className="media-loading";const original=ms.find(item=>String(item.telegram_message_id)===String(m.reply_to_message_id));quote.textContent="↪ "+(original?.text||"Ответ на сообщение");b.append(quote);}
   if(m.media_type&&m.id){
    const loading=document.createElement("div");loading.className="media-loading";loading.textContent=currentLang==="ru"?"Медиа загрузится при прокрутке сюда…":"Media will load as you scroll here…";b.append(loading);
    b._mediaLoadTask=()=>loadMessageMedia(m,b,loading);if(mediaObserver)mediaObserver.observe(b);else b._mediaLoadTask();
