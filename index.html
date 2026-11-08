@@ -836,7 +836,7 @@ async function loadMessageMedia(m,b,loading,attempt=0){
  try{
   const url=await fetchMediaUrl(m.id,{force:attempt>0});
   if(!b.isConnected)return;
-  loading.remove();
+  if(!["photo","sticker"].includes(m.media_type))loading.remove();
   let media;
   if(m.media_type==="animated_sticker"){
    media=document.createElement("div");media.className="message-media sticker-animation";b.insertBefore(media,b.firstChild);await loadTgsSticker(url,media);return;
@@ -851,7 +851,7 @@ async function loadMessageMedia(m,b,loading,attempt=0){
    const link=document.createElement("a");link.href=url;link.target="_blank";link.rel="noopener";link.textContent=m.media_file_name||tr("openFile");link.style.color="var(--blue)";b.insertBefore(link,b.firstChild);return;
   }
   media.classList.add("message-media");
-  if(media instanceof HTMLImageElement){media.classList.add("media-image-appear");media.addEventListener("load",()=>media.classList.add("is-loaded"),{once:true});}
+  if(media instanceof HTMLImageElement){media.classList.add("media-image-appear");media.addEventListener("load",()=>{media.classList.add("is-loaded");if(loading.isConnected)loading.remove();},{once:true});}
   if(media instanceof HTMLMediaElement||media instanceof HTMLImageElement)media.addEventListener("error",()=>showMediaLoadError(m,b,loading,attempt),{once:true});
   if(media instanceof HTMLImageElement&&(m.media_type==="photo"||m.media_type==="sticker")){media.style.cursor="zoom-in";media.title=currentLang==="ru"?"Открыть на весь экран":"Open fullscreen";media.addEventListener("click",()=>openMediaViewer(m));}
   b.insertBefore(media,b.firstChild);
