@@ -83,6 +83,17 @@ async function telegram(method, payload) {
 
 function extractMedia(message) {
   if (!message || typeof message !== "object") return null;
+  if (message.sticker?.file_id) {
+    const sticker = message.sticker;
+    const format = sticker.is_animated ? "animated" : sticker.is_video ? "video" : "static";
+    return {
+      fileId: sticker.file_id,
+      stickerFileId: sticker.file_id,
+      type: format === "animated" ? "animated_sticker" : format === "video" ? "video_sticker" : "sticker",
+      mime: format === "animated" ? "application/x-tgsticker" : format === "video" ? "video/webm" : "image/webp",
+      name: null
+    };
+  }
   if (Array.isArray(message.photo) && message.photo.length) {
     const photo = message.photo[message.photo.length - 1];
     return { fileId: photo.file_id, type: "photo", mime: "image/jpeg", name: null };
@@ -103,10 +114,10 @@ function extractMedia(message) {
       if (type === "document" && item.mime_type?.startsWith("image/")) mediaType = "photo";
       else if (type === "document" && item.mime_type?.startsWith("video/")) mediaType = "video";
       return {
-        fileId: field === "sticker" && (item.is_animated || item.is_video) && item.thumbnail?.file_id ? item.thumbnail.file_id : item.file_id,
-        stickerFileId: field === "sticker" ? item.file_id : null,
+        fileId: item.file_id,
+        stickerFileId: null,
         type: mediaType,
-        mime: field === "sticker" && (item.is_animated || item.is_video) && item.thumbnail?.file_id ? "image/jpeg" : (item.is_video ? "video/webm" : (item.mime_type || fallbackMime)),
+        mime: item.is_video ? "video/webm" : (item.mime_type || fallbackMime),
         name: item.file_name || null
       };
     }
@@ -203,6 +214,7 @@ app.post("/telegram/webhook", async (req, res) => {
     const media = extractMedia(message);
     const mediaLabels = {
       photo: "[Фото]", video: "[Видео]", animation: "[GIF]", sticker: "[Стикер]",
+      animated_sticker: "[Анимированный стикер]", video_sticker: "[Видеостикер]",
       document: "[Файл]", audio: "[Аудио]", voice: "[Голосовое сообщение]",
       video_note: "[Видеосообщение]"
     };
@@ -535,7 +547,7 @@ app.get("/api/stickers", requireAdmin, async (_req, res) => {
   try {
     const result = await pool.query(
       `SELECT DISTINCT ON (COALESCE(sticker_file_id, media_file_id)) id::text AS id, media_file_id,
-         COALESCE(sticker_file_id, media_file_id) AS sticker_file_id, text, created_at
+         COALESCE(sticker_file_id, media_file_id) AS sticker_file_id, media_type, text, created_at
        FROM messages WHERE media_type IN ('sticker','video_sticker') AND media_file_id IS NOT NULL
        ORDER BY COALESCE(sticker_file_id, media_file_id), created_at DESC LIMIT 60`
     );
@@ -588,11 +600,13 @@ app.post("/api/send-sticker", requireAdmin, async (req, res) => {
        VALUES ($1,$2,$3,$4,$5,$6,NOW()) ON CONFLICT (chat_id) DO UPDATE SET last_message_at=NOW()`,
       [String(chat.id), chat.type || "private", chat.title || null, chat.username || null, chat.first_name || null, chat.last_name || null]
     );
+    const sticker = sent.sticker || {};
+    const stickerType = sticker.is_animated ? "animated_sticker" : sticker.is_video ? "video_sticker" : "sticker";
+    const stickerMime = sticker.is_animated ? "application/x-tgsticker" : sticker.is_video ? "video/webm" : "image/webp";
     await pool.query(
       `INSERT INTO messages (chat_id, telegram_message_id, direction, text, sender_name, media_file_id, media_type, media_mime_type, sticker_file_id, created_at)
-       VALUES ($1,$2,'outgoing','[Стикер]','Вы',$3,'sticker',$4,$5,NOW()) ON CONFLICT DO NOTHING`,
-      [String(chat.id), sent.message_id, sent.sticker?.thumbnail?.file_id || sent.sticker?.file_id || fileId,
-       sent.sticker?.thumbnail?.file_id ? "image/jpeg" : "image/webp", sent.sticker?.file_id || fileId]
+       VALUES ($1,$2,'outgoing','[Стикер]','Вы',$3,$4,$5,$3,NOW()) ON CONFLICT DO NOTHING`,
+      [String(chat.id), sent.message_id, sticker.file_id || fileId, stickerType, stickerMime]
     );
     res.json({ ok: true, message_id: sent.message_id });
   } catch (error) {
