@@ -19,6 +19,12 @@ h2{font-size:clamp(22px,4vw,30px);margin:0 0 7px;letter-spacing:-.8px}.sub{font-
 .composer{align-items:flex-end;flex-wrap:wrap}
 .attach-btn{width:46px;height:46px;flex:0 0 46px;border:1px solid var(--border);border-radius:11px;background:#ffffff0a;color:var(--text);font-size:21px;cursor:pointer}
 .attach-btn:hover{border-color:var(--purple);background:#8b5cf622}
+.voice-record-btn{width:46px;height:46px;flex:0 0 46px;border:1px solid var(--border);border-radius:11px;background:#ffffff0a;color:var(--text);font-size:19px;cursor:pointer}
+.voice-record-btn:hover{border-color:var(--purple);background:#8b5cf622}
+.voice-record-btn.recording{background:#a83246;border-color:#fb5364;color:#fff;animation:voicePulse 1.2s ease-in-out infinite}
+.voice-record-btn:disabled{opacity:.45;cursor:not-allowed}
+.voice-status{flex:1 0 100%;font-size:11px;color:var(--muted);padding:0 4px}
+@keyframes voicePulse{50%{box-shadow:0 0 0 5px #fb536422}}
 .file-status{flex:1 0 100%;font-size:11px;color:var(--muted);padding:0 4px}
 .file-status:empty{display:none}
 .bubble .media-label{font-weight:700;color:var(--blue);margin-bottom:4px}
@@ -99,7 +105,7 @@ body[data-theme] .toast{background:var(--panel);border-color:var(--border)}
   <section class="panel conversation">
     <div class="conversation-head"><div><div class="person" id="activeName" data-i18n="chooseChat">Выбери чат</div><div class="muted" id="activeId" data-i18n="conversationHere">Переписка появится здесь</div></div><div class="conversation-actions"><button class="btn danger" id="clearChatBtn" type="button" disabled data-i18n="clearChat">Очистить чат</button><button class="btn secondary" id="refreshBtn" type="button" data-i18n="refresh">Обновить</button></div></div>
     <div class="messages" id="messages"><div class="empty" data-i18n="noChatSelected">📭<br>Пока чат не выбран.</div></div>
-    <form class="composer" id="sendForm"><input id="mediaInput" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.zip" hidden><button class="attach-btn" id="attachBtn" type="button" disabled aria-label="Attach file" title="Прикрепить файл">＋</button><textarea class="textarea" id="messageText" maxlength="4096" placeholder="Напиши сообщение или подпись…" data-i18n-placeholder="messagePlaceholder" disabled></textarea><button class="btn" id="sendBtn" disabled data-i18n="send">Отправить</button><div class="file-status" id="fileStatus" aria-live="polite"></div></form>
+    <form class="composer" id="sendForm"><input id="mediaInput" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.zip" hidden><button class="attach-btn" id="attachBtn" type="button" disabled aria-label="Attach file" title="Прикрепить файл">＋</button><button class="voice-record-btn" id="voiceBtn" type="button" disabled aria-label="Записать голосовое" title="Записать голосовое">🎙</button><textarea class="textarea" id="messageText" maxlength="4096" placeholder="Напиши сообщение или подпись…" data-i18n-placeholder="messagePlaceholder" disabled></textarea><button class="btn" id="sendBtn" disabled data-i18n="send">Отправить</button><div class="file-status" id="fileStatus" aria-live="polite"></div><div class="voice-status" id="voiceStatus" aria-live="polite"></div></form>
     <div class="hint" data-i18n="sendHint">Сообщения отправляются от имени твоего Telegram-бота. Пользователь должен предварительно начать диалог с ботом.</div>
   </section>
 </main>
@@ -121,8 +127,8 @@ body[data-theme] .toast{background:var(--panel);border-color:var(--border)}
 const $ = id => document.getElementById(id);
 
 const I18N = {
- ru:{clearChat:"Очистить чат",clearConfirm:"Очистить всю переписку этого чата? Это действие нельзя отменить.",clearDone:"История чата очищена.",clearFailed:"Не удалось очистить чат.",notifyTitle:"Включить уведомления?",notifyDesc:"Если панель будет в фоне, Windows покажет системное уведомление. Когда вкладка открыта — прозвучит мягкий сигнал.",notifyLater:"Не сейчас",notifyAllow:"Разрешить",notifyDenied:"Уведомления заблокированы в настройках браузера.",notifyEnabled:"Уведомления включены.",newMessage:"Новое сообщение",themeLabel:"ТЕМА",themeMidnight:"Полночь",themeGraphite:"Графит",themeOcean:"Океан",themeForest:"Лес",themeSunset:"Закат",welcome:"С возвращением",loginDesc:"Подключи собственный сервер Render и введи ключ доступа. Панель будет работать с данными именно этого сервера.",serverLabel:"АДРЕС СЕРВЕРА RENDER",keyLabel:"КЛЮЧ ДОСТУПА",keyPlaceholder:"Вставь ADMIN_API_KEY из Render",connect:"Подключиться",keyNotice:"Сервер и ключ сохраняются в этом браузере, чтобы не входить при каждом открытии. На общем компьютере используй «Выйти».",brandSub:"Панель управления ботом",checking:"Проверка подключения",logout:"Выйти",messagesTitle:"Сообщения и чаты",connectedServer:"Подключённый сервер:",usersAppear:"Пользователи появятся здесь после того, как напишут боту.",chatList:"💬 Список чатов",searchPlaceholder:"Поиск по имени или ID…",emptyChats:"После подключения здесь появятся чаты.",chooseChat:"Выбери чат",conversationHere:"Переписка появится здесь",refresh:"Обновить",noChatSelected:"📭\nПока чат не выбран.",messagePlaceholder:"Напиши сообщение или подпись…",attachFile:"Прикрепить файл",fileTooLarge:"Файл слишком большой. Фото — до 10 МБ, остальные файлы — до 20 МБ.",captionTooLong:"Подпись к файлу не должна превышать 1024 символа.",fileSent:"Файл отправлен.",mediaLoading:"Загрузка медиа из Telegram…",mediaAlt:"Медиафайл из Telegram",mediaUnavailable:"Не удалось загрузить медиа.",openFile:"Открыть файл",send:"Отправить",sendHint:"Сообщения отправляются от имени твоего Telegram-бота. Пользователь должен предварительно начать диалог с ботом.",footer:"Telegram Bot Dashboard · Не публикуй ключ доступа и токен бота",offline:"Не подключено",connected:"Подключено",chat:"чат",chats:"чатов",nothingFound:"Ничего не найдено.",noChats:"Пока нет чатов. Напиши боту в Telegram и отправь /start.",noMessages:"В этом чате пока нет сохранённых сообщений.",user:"Пользователь",chatId:"Telegram Chat ID: ",id:"ID: ",loginFirst:"Сначала подключи сервер.",https:"Укажи HTTPS-адрес Render.",badUrl:"В адресе сервера не должно быть логина, пароля или параметров.",pathUrl:"Укажи только основной адрес сервера, без дополнительных путей.",keyRequired:"Введи ключ доступа.",checkKey:"Проверь ключ доступа.",serverError:"Ошибка сервера",notConnected:"Не удалось подключиться.",webhookFailed:"Панель открыта, но webhook не обновлён: ",connectedToast:"Сервер подключён.",disconnectedToast:"Подключение отключено.",sent:"Сообщение отправлено.",emptyMessage:"",chooseChatName:"Чат"},
- en:{clearChat:"Clear chat",clearConfirm:"Clear the entire conversation in this chat? This action cannot be undone.",clearDone:"Chat history cleared.",clearFailed:"Could not clear the chat.",notifyTitle:"Enable notifications?",notifyDesc:"When the dashboard is in the background, Windows can show a desktop notification. While the tab is open, you will hear a gentle sound.",notifyLater:"Not now",notifyAllow:"Allow",notifyDenied:"Notifications are blocked in your browser settings.",notifyEnabled:"Notifications enabled.",newMessage:"New message",themeLabel:"THEME",themeMidnight:"Midnight",themeGraphite:"Graphite",themeOcean:"Ocean",themeForest:"Forest",themeSunset:"Sunset",welcome:"Welcome back",loginDesc:"Connect your own Render server and enter your access key. The dashboard will use data from that server only.",serverLabel:"RENDER SERVER URL",keyLabel:"ACCESS KEY",keyPlaceholder:"Paste ADMIN_API_KEY from Render",connect:"Connect",keyNotice:"Your server and key are saved in this browser so you do not need to sign in every time. On a shared computer, use Log out.",brandSub:"Bot control panel",checking:"Checking connection",logout:"Log out",messagesTitle:"Messages & chats",connectedServer:"Connected server:",usersAppear:"Users will appear here after they message your bot.",chatList:"💬 Chat list",searchPlaceholder:"Search by name or ID…",emptyChats:"Chats will appear here after connecting.",chooseChat:"Select a chat",conversationHere:"Conversation will appear here",refresh:"Refresh",noChatSelected:"📭\nNo chat selected yet.",messagePlaceholder:"Write a message or caption…",attachFile:"Attach file",fileTooLarge:"File too large. Photos: up to 10 MB; other files: up to 20 MB.",captionTooLong:"The media caption must be 1024 characters or fewer.",fileSent:"File sent.",mediaLoading:"Loading media from Telegram…",mediaAlt:"Media from Telegram",mediaUnavailable:"Could not load media.",openFile:"Open file",send:"Send",sendHint:"Messages are sent from your Telegram bot. A user must start a conversation with the bot first.",footer:"Telegram Bot Dashboard · Keep your access key and bot token private",offline:"Not connected",connected:"Connected",chat:"chat",chats:"chats",nothingFound:"No results found.",noChats:"No chats yet. Message your bot on Telegram and send /start.",noMessages:"There are no saved messages in this chat yet.",user:"User",chatId:"Telegram Chat ID: ",id:"ID: ",loginFirst:"Connect a server first.",https:"Enter your Render HTTPS URL.",badUrl:"The server URL must not contain a username, password, or query parameters.",pathUrl:"Enter only the base server URL, without extra paths.",keyRequired:"Enter your access key.",checkKey:"Check your access key.",serverError:"Server error",notConnected:"Could not connect.",webhookFailed:"Dashboard connected, but webhook was not updated: ",connectedToast:"Server connected.",disconnectedToast:"Disconnected.",sent:"Message sent.",emptyMessage:"",chooseChatName:"Chat"}
+ ru:{clearChat:"Очистить чат",clearConfirm:"Очистить всю переписку этого чата? Это действие нельзя отменить.",clearDone:"История чата очищена.",clearFailed:"Не удалось очистить чат.",notifyTitle:"Включить уведомления?",notifyDesc:"Если панель будет в фоне, Windows покажет системное уведомление. Когда вкладка открыта — прозвучит мягкий сигнал.",notifyLater:"Не сейчас",notifyAllow:"Разрешить",notifyDenied:"Уведомления заблокированы в настройках браузера.",notifyEnabled:"Уведомления включены.",newMessage:"Новое сообщение",themeLabel:"ТЕМА",themeMidnight:"Полночь",themeGraphite:"Графит",themeOcean:"Океан",themeForest:"Лес",themeSunset:"Закат",welcome:"С возвращением",loginDesc:"Подключи собственный сервер Render и введи ключ доступа. Панель будет работать с данными именно этого сервера.",serverLabel:"АДРЕС СЕРВЕРА RENDER",keyLabel:"КЛЮЧ ДОСТУПА",keyPlaceholder:"Вставь ADMIN_API_KEY из Render",connect:"Подключиться",keyNotice:"Сервер и ключ сохраняются в этом браузере, чтобы не входить при каждом открытии. На общем компьютере используй «Выйти».",brandSub:"Панель управления ботом",checking:"Проверка подключения",logout:"Выйти",messagesTitle:"Сообщения и чаты",connectedServer:"Подключённый сервер:",usersAppear:"Пользователи появятся здесь после того, как напишут боту.",chatList:"💬 Список чатов",searchPlaceholder:"Поиск по имени или ID…",emptyChats:"После подключения здесь появятся чаты.",chooseChat:"Выбери чат",conversationHere:"Переписка появится здесь",refresh:"Обновить",noChatSelected:"📭\nПока чат не выбран.",messagePlaceholder:"Напиши сообщение или подпись…",attachFile:"Прикрепить файл",fileTooLarge:"Файл слишком большой. Фото — до 10 МБ, остальные файлы — до 20 МБ.",captionTooLong:"Подпись к файлу не должна превышать 1024 символа.",fileSent:"Файл отправлен.",mediaLoading:"Загрузка медиа из Telegram…",mediaAlt:"Медиафайл из Telegram",mediaUnavailable:"Не удалось загрузить медиа.",openFile:"Открыть файл",send:"Отправить",voiceRecord:"Записать голосовое",voiceStopSend:"Остановить и отправить",voiceRecording:"Идёт запись… Нажми ■, чтобы отправить.",voiceFinishFirst:"Сначала останови запись голосового сообщения.",sendHint:"Сообщения отправляются от имени твоего Telegram-бота. Пользователь должен предварительно начать диалог с ботом.",footer:"Telegram Bot Dashboard · Не публикуй ключ доступа и токен бота",offline:"Не подключено",connected:"Подключено",chat:"чат",chats:"чатов",nothingFound:"Ничего не найдено.",noChats:"Пока нет чатов. Напиши боту в Telegram и отправь /start.",noMessages:"В этом чате пока нет сохранённых сообщений.",user:"Пользователь",chatId:"Telegram Chat ID: ",id:"ID: ",loginFirst:"Сначала подключи сервер.",https:"Укажи HTTPS-адрес Render.",badUrl:"В адресе сервера не должно быть логина, пароля или параметров.",pathUrl:"Укажи только основной адрес сервера, без дополнительных путей.",keyRequired:"Введи ключ доступа.",checkKey:"Проверь ключ доступа.",serverError:"Ошибка сервера",notConnected:"Не удалось подключиться.",webhookFailed:"Панель открыта, но webhook не обновлён: ",connectedToast:"Сервер подключён.",disconnectedToast:"Подключение отключено.",sent:"Сообщение отправлено.",emptyMessage:"",chooseChatName:"Чат"},
+ en:{clearChat:"Clear chat",clearConfirm:"Clear the entire conversation in this chat? This action cannot be undone.",clearDone:"Chat history cleared.",clearFailed:"Could not clear the chat.",notifyTitle:"Enable notifications?",notifyDesc:"When the dashboard is in the background, Windows can show a desktop notification. While the tab is open, you will hear a gentle sound.",notifyLater:"Not now",notifyAllow:"Allow",notifyDenied:"Notifications are blocked in your browser settings.",notifyEnabled:"Notifications enabled.",newMessage:"New message",themeLabel:"THEME",themeMidnight:"Midnight",themeGraphite:"Graphite",themeOcean:"Ocean",themeForest:"Forest",themeSunset:"Sunset",welcome:"Welcome back",loginDesc:"Connect your own Render server and enter your access key. The dashboard will use data from that server only.",serverLabel:"RENDER SERVER URL",keyLabel:"ACCESS KEY",keyPlaceholder:"Paste ADMIN_API_KEY from Render",connect:"Connect",keyNotice:"Your server and key are saved in this browser so you do not need to sign in every time. On a shared computer, use Log out.",brandSub:"Bot control panel",checking:"Checking connection",logout:"Log out",messagesTitle:"Messages & chats",connectedServer:"Connected server:",usersAppear:"Users will appear here after they message your bot.",chatList:"💬 Chat list",searchPlaceholder:"Search by name or ID…",emptyChats:"Chats will appear here after connecting.",chooseChat:"Select a chat",conversationHere:"Conversation will appear here",refresh:"Refresh",noChatSelected:"📭\nNo chat selected yet.",messagePlaceholder:"Write a message or caption…",attachFile:"Attach file",fileTooLarge:"File too large. Photos: up to 10 MB; other files: up to 20 MB.",captionTooLong:"The media caption must be 1024 characters or fewer.",fileSent:"File sent.",mediaLoading:"Loading media from Telegram…",mediaAlt:"Media from Telegram",mediaUnavailable:"Could not load media.",openFile:"Open file",send:"Send",voiceRecord:"Record a voice message",voiceStopSend:"Stop and send",voiceRecording:"Recording… Press ■ to send.",voiceFinishFirst:"Stop the voice recording first.",sendHint:"Messages are sent from your Telegram bot. A user must start a conversation with the bot first.",footer:"Telegram Bot Dashboard · Keep your access key and bot token private",offline:"Not connected",connected:"Connected",chat:"chat",chats:"chats",nothingFound:"No results found.",noChats:"No chats yet. Message your bot on Telegram and send /start.",noMessages:"There are no saved messages in this chat yet.",user:"User",chatId:"Telegram Chat ID: ",id:"ID: ",loginFirst:"Connect a server first.",https:"Enter your Render HTTPS URL.",badUrl:"The server URL must not contain a username, password, or query parameters.",pathUrl:"Enter only the base server URL, without extra paths.",keyRequired:"Enter your access key.",checkKey:"Check your access key.",serverError:"Server error",notConnected:"Could not connect.",webhookFailed:"Dashboard connected, but webhook was not updated: ",connectedToast:"Server connected.",disconnectedToast:"Disconnected.",sent:"Message sent.",emptyMessage:"",chooseChatName:"Chat"}
 };
 let currentLang=localStorage.getItem("tg_dashboard_lang")==="en"?"en":"ru";
 
@@ -138,7 +144,8 @@ applyTheme(localStorage.getItem("tg_dashboard_theme")||"midnight");
 
 function tr(key){return (I18N[currentLang]&&I18N[currentLang][key])||I18N.ru[key]||key;}
 function applyLanguage(lang){
- currentLang=lang==="en"?"en":"ru";localStorage.setItem("tg_dashboard_lang",currentLang);document.documentElement.lang=currentLang;document.title=currentLang==="ru"?"Telegram Dashboard — Вход":"Telegram Dashboard — Sign in";
+ currentLang=lang==="en"?"en":"ru";
+ const voiceButton=$("voiceBtn");if(voiceButton){voiceButton.title=tr("voiceRecord");voiceButton.setAttribute("aria-label",tr("voiceRecord"));}localStorage.setItem("tg_dashboard_lang",currentLang);document.documentElement.lang=currentLang;document.title=currentLang==="ru"?"Telegram Dashboard — Вход":"Telegram Dashboard — Sign in";
  document.querySelectorAll("[data-i18n]").forEach(el=>{const k=el.dataset.i18n;if(k==="noChatSelected")el.innerHTML=currentLang==="ru"?"📭<br>Пока чат не выбран.":"📭<br>No chat selected yet.";else el.textContent=tr(k);});
  document.querySelectorAll("[data-i18n-placeholder]").forEach(el=>el.placeholder=tr(el.dataset.i18nPlaceholder));
  document.querySelectorAll(".lang-btn").forEach(b=>b.classList.toggle("active",b.dataset.lang===currentLang));
@@ -154,6 +161,9 @@ let chats = [], activeChatId = null, refreshTimer = null, busy = false;
 let knownIncomingMessages = new Map();
 let notificationAudio = null;
 let notificationPromptShown = false;
+let voiceRecorder = null;
+let voiceStream = null;
+let voiceChunks = [];
 
 function playSoftNotification(){
  if(!notificationAudio)return;
@@ -256,7 +266,7 @@ function toast(message){const el=$("toast");el.textContent=message;el.classList.
 function connection(){return {server:localStorage.getItem("tg_dashboard_server")||sessionStorage.getItem("tg_dashboard_server")||"",key:localStorage.getItem("tg_dashboard_key")||sessionStorage.getItem("tg_dashboard_key")||""};}
 function cleanServerUrl(value){const url=new URL(value.trim());if(url.protocol!=="https:"&&!(url.protocol==="http:"&&["localhost","127.0.0.1"].includes(url.hostname)))throw new Error(tr("https"));if(url.username||url.password||url.search||url.hash)throw new Error(tr("badUrl"));if(url.pathname!=="/")throw new Error(tr("pathUrl"));return url.origin;}
 async function api(path,options={}){const cfg=connection();if(!cfg.server||!cfg.key)throw new Error(tr("loginFirst"));const headers={"X-Admin-Key":cfg.key,...(options.headers||{})};if(!(options.body instanceof FormData))headers["Content-Type"]="application/json";const r=await fetch(cfg.server+path,{...options,headers});const d=await r.json().catch(()=>({}));if(r.status===401){showLogin();throw new Error(d.error||tr("checkKey"));}if(!r.ok||d.ok!==true)throw new Error(d.error||tr("serverError"));return d;}
-function showLogin(){if(refreshTimer)clearInterval(refreshTimer);refreshTimer=null;$("dashboard").hidden=true;$("loginView").hidden=false;$("statusText").textContent=tr("offline");$("statusDot").classList.remove("online");$("messageText").disabled=true;$("sendBtn").disabled=true;$("attachBtn").disabled=true;$("clearChatBtn").disabled=true;}
+function showLogin(){if(voiceRecorder&&voiceRecorder.state!=="inactive")voiceRecorder.stop();if(voiceStream)voiceStream.getTracks().forEach(track=>track.stop());voiceStream=null;voiceRecorder=null;$("voiceBtn").disabled=true;$("voiceBtn").classList.remove("recording");$("voiceBtn").textContent="🎙";$("voiceStatus").textContent="";if(refreshTimer)clearInterval(refreshTimer);refreshTimer=null;$("dashboard").hidden=true;$("loginView").hidden=false;$("statusText").textContent=tr("offline");$("statusDot").classList.remove("online");$("messageText").disabled=true;$("sendBtn").disabled=true;$("attachBtn").disabled=true;$("clearChatBtn").disabled=true;}
 function showDashboard(){$("loginView").hidden=true;$("dashboard").hidden=false;$("statusText").textContent=tr("connected");$("statusDot").classList.add("online");$("connectedServer").textContent=connection().server;if(refreshTimer)clearInterval(refreshTimer);refreshTimer=setInterval(refreshAll,10000);setTimeout(maybeAskForNotifications,250);}
 function displayName(c){return c.title||[c.first_name,c.last_name].filter(Boolean).join(" ")||(c.username?"@"+c.username:tr("user"));}
 function renderChats(){const q=$("searchInput").value.trim().toLowerCase(),v=chats.filter(c=>[displayName(c),c.username,c.chat_id,c.last_message].join(" ").toLowerCase().includes(q));$("chatCount").textContent=chats.length+" "+(chats.length===1?tr("chat"):tr("chats"));const list=$("chatList");list.replaceChildren();if(!v.length){const e=document.createElement("div");e.className="empty";e.textContent=chats.length?tr("nothingFound"):tr("noChats");list.append(e);return;}v.forEach(c=>{const item=document.createElement("div");item.className="chat"+(String(c.chat_id)===String(activeChatId)?" active":"");const av=document.createElement("div");av.className="avatar";av.textContent=displayName(c).slice(0,1).toUpperCase()||"T";const info=document.createElement("div");info.className="chat-info";const n=document.createElement("div");n.className="chat-name";n.textContent=displayName(c);const p=document.createElement("div");p.className="chat-preview";p.textContent=c.last_message||"Нет сообщений";const id=document.createElement("div");id.className="chat-id";id.textContent=tr("id")+c.chat_id;info.append(n,p,id);item.append(av,info);item.addEventListener("click",()=>selectChat(c.chat_id));list.append(item);});}
@@ -341,7 +351,7 @@ async function renderMessages(ms){
 }
 async function loadChats({detect=false}={}){const d=await api("/api/chats");chats=d.chats||[];if(detect)checkForNewMessages(chats);else{knownIncomingMessages=new Map(chats.map(c=>[String(c.chat_id),c.last_message_id==null?null:String(c.last_message_id)]));}renderChats();}
 async function loadMessages(){if(!activeChatId)return;const d=await api("/api/chats/"+encodeURIComponent(activeChatId)+"/messages");renderMessages(d.messages||[]);}
-async function selectChat(id){activeChatId=String(id);const c=chats.find(x=>String(x.chat_id)===activeChatId);$("activeName").textContent=c?displayName(c):tr("chooseChatName");$("activeId").textContent=tr("chatId")+activeChatId;$("messageText").disabled=false;$("sendBtn").disabled=false;$("attachBtn").disabled=false;$("clearChatBtn").disabled=false;renderChats();await loadMessages();}
+async function selectChat(id){activeChatId=String(id);const c=chats.find(x=>String(x.chat_id)===activeChatId);$("activeName").textContent=c?displayName(c):tr("chooseChatName");$("activeId").textContent=tr("chatId")+activeChatId;$("messageText").disabled=false;$("sendBtn").disabled=false;$("attachBtn").disabled=false;$("voiceBtn").disabled=false;$("clearChatBtn").disabled=false;renderChats();await loadMessages();}
 async function refreshAll(){if(busy||$("dashboard").hidden)return;busy=true;try{await loadChats({detect:true});await loadMessages();}catch(e){if(!e.message.includes("Войди"))toast(e.message);}finally{busy=false;}}
 $("loginForm").addEventListener("submit",async e=>{
  e.preventDefault();$("loginBtn").disabled=true;$("loginError").textContent="";
@@ -371,6 +381,60 @@ $("loginForm").addEventListener("submit",async e=>{
 });
 $("logoutBtn").addEventListener("click",()=>{sessionStorage.removeItem("tg_dashboard_server");sessionStorage.removeItem("tg_dashboard_key");localStorage.removeItem("tg_dashboard_server");localStorage.removeItem("tg_dashboard_key");chats=[];activeChatId=null;showLogin();$("adminKey").value="";toast(tr("disconnectedToast"));});
 
+
+async function sendRecordedVoice(blob){
+ if(!blob||!blob.size){toast(currentLang==="ru"?"Запись пустая. Попробуй ещё раз.":"The recording is empty. Please try again.");return;}
+ if(blob.size>20*1024*1024){toast(currentLang==="ru"?"Запись слишком большая (максимум 20 МБ).":"Recording is too large (20 MB maximum).");return;}
+ const button=$("voiceBtn");button.disabled=true;
+ $("voiceStatus").textContent=currentLang==="ru"?"Отправка голосового сообщения…":"Sending voice message…";
+ try{
+  const data=new FormData();data.append("chat_id",activeChatId);
+  const extension=blob.type.includes("ogg")?"ogg":blob.type.includes("mp4")?"m4a":"webm";
+  data.append("voice",blob,"recording."+extension);
+  await api("/api/send-voice",{method:"POST",body:data});
+  playSendSound();await refreshAll();
+  toast(currentLang==="ru"?"Голосовое сообщение отправлено.":"Voice message sent.");
+ }catch(error){toast(error.message);}
+ finally{$("voiceStatus").textContent="";button.disabled=!activeChatId;}
+}
+async function toggleVoiceRecording(){
+ const button=$("voiceBtn");
+ if(voiceRecorder&&voiceRecorder.state==="recording"){
+  button.disabled=true;
+  $("voiceStatus").textContent=currentLang==="ru"?"Обработка и отправка записи…":"Processing and sending…";
+  voiceRecorder.stop();
+  return;
+ }
+ if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){
+  toast(currentLang==="ru"?"Запись аудио не поддерживается этим браузером.":"Audio recording is not supported by this browser.");return;
+ }
+ try{
+  voiceStream=await navigator.mediaDevices.getUserMedia({audio:true});
+  const mimeCandidates=["audio/webm;codecs=opus","audio/ogg;codecs=opus","audio/mp4"];
+  const mimeType=mimeCandidates.find(type=>MediaRecorder.isTypeSupported(type));
+  voiceRecorder=mimeType?new MediaRecorder(voiceStream,{mimeType}):new MediaRecorder(voiceStream);
+  voiceChunks=[];
+  voiceRecorder.ondataavailable=event=>{if(event.data&&event.data.size)voiceChunks.push(event.data);};
+  voiceRecorder.onerror=()=>{toast(currentLang==="ru"?"Ошибка записи с микрофона.":"Microphone recording failed.");};
+  voiceRecorder.onstop=()=>{
+   const blob=new Blob(voiceChunks,{type:voiceRecorder?.mimeType||"audio/webm"});
+   voiceChunks=[];if(voiceStream)voiceStream.getTracks().forEach(track=>track.stop());voiceStream=null;
+   voiceRecorder=null;button.classList.remove("recording");button.textContent="🎙";
+   button.title=tr("voiceRecord");button.setAttribute("aria-label",tr("voiceRecord"));
+   if(blob.size)sendRecordedVoice(blob);else{$("voiceStatus").textContent="";button.disabled=!activeChatId;}
+  };
+  voiceRecorder.start(250);
+  button.classList.add("recording");button.textContent="■";
+  button.title=tr("voiceStopSend");button.setAttribute("aria-label",tr("voiceStopSend"));
+  $("voiceStatus").textContent=tr("voiceRecording");
+ }catch(error){
+  if(voiceStream)voiceStream.getTracks().forEach(track=>track.stop());voiceStream=null;voiceRecorder=null;
+  button.disabled=!activeChatId;
+  toast(error.name==="NotAllowedError"?(currentLang==="ru"?"Разреши доступ к микрофону в браузере.":"Allow microphone access in your browser."):(error.message||"Microphone error"));
+ }
+}
+$("voiceBtn").addEventListener("click",toggleVoiceRecording);
+
 $("attachBtn").addEventListener("click",()=>$("mediaInput").click());
 $("mediaInput").addEventListener("change",()=>{const file=$("mediaInput").files[0];$("fileStatus").textContent=file?file.name+" · "+(file.size/1024/1024).toFixed(1)+" MB":"";});
 $("messageText").addEventListener("keydown",e=>{
@@ -397,7 +461,8 @@ $("sendForm").addEventListener("submit",async e=>{
  if(!file&&!message)return;
  if(file&&file.size>(file.type.startsWith("image/")?10:20)*1024*1024){toast(tr("fileTooLarge"));return;}
  if(file&&message.length>1024){toast(tr("captionTooLong"));return;}
- $("sendBtn").disabled=true;$("attachBtn").disabled=true;
+ if(voiceRecorder&&voiceRecorder.state==="recording"){toast(tr("voiceFinishFirst"));return;}
+ $("sendBtn").disabled=true;$("attachBtn").disabled=true;$("voiceBtn").disabled=true;
  try{
   if(file){
    const data=new FormData();data.append("chat_id",activeChatId);data.append("caption",message);data.append("file",file);
@@ -411,7 +476,7 @@ $("sendForm").addEventListener("submit",async e=>{
    $("messageText").value="";await refreshAll();toast(tr("sent"));
   }
  }catch(err){toast(err.message);}
- finally{$("sendBtn").disabled=!activeChatId;$("attachBtn").disabled=!activeChatId;}
+ finally{$("sendBtn").disabled=!activeChatId;$("attachBtn").disabled=!activeChatId;$("voiceBtn").disabled=!activeChatId;}
 });
 (async()=>{const cfg=connection();if(cfg.server&&cfg.key){$("serverUrl").value=cfg.server;try{await api("/api/session");showDashboard();applyLanguage(currentLang);await loadChats();return;}catch(_){sessionStorage.removeItem("tg_dashboard_server");sessionStorage.removeItem("tg_dashboard_key");}}showLogin();applyLanguage(currentLang);})();
 </script>
