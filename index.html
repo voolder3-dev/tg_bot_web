@@ -353,6 +353,8 @@ body[data-mode="light"][data-theme] .theme-picker select{color:var(--text);backg
 
 <div class="overlay-modal" id="globalSearchModal" hidden><div class="modal-card"><div class="modal-head"><strong>⌕ Поиск по всем сообщениям</strong><button class="icon-btn" data-close-modal="globalSearchModal" type="button">×</button></div><div class="modal-body"><input class="global-search-input" id="globalSearchInput" type="search" placeholder="Введи слово или фразу (от 2 символов)…"><div class="search-results" id="globalSearchResults"><div class="empty">Начни вводить запрос для поиска.</div></div></div></div></div>
 <div class="overlay-modal" id="mediaViewer" hidden><div class="modal-card"><div class="modal-head"><strong id="mediaViewerTitle">Просмотр медиа</strong><button class="icon-btn" data-close-modal="mediaViewer" type="button">×</button></div><div class="media-viewer-content" id="mediaViewerContent"></div></div></div>
+<div class="overlay-modal" id="addBotModal" hidden><form class="modal-card" id="botProfileForm"><div class="modal-head"><strong>＋ Добавить подключение</strong><button class="icon-btn" data-close-modal="addBotModal" type="button">×</button></div><div class="modal-body"><label class="field"><span>Название</span><input class="input" id="botProfileName" maxlength="32" placeholder="Например, SilverSMP"></label><label class="field"><span>Render URL</span><input class="input" id="botProfileServer" type="url" placeholder="https://your-bot.onrender.com" required></label><label class="field"><span>ADMIN_API_KEY</span><input class="input" id="botProfileKey" type="password" autocomplete="off" required></label><div class="muted">Для каждого бота нужен отдельный адрес backend-сервера и ключ доступа.</div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn secondary" type="button" data-close-modal="addBotModal">Отмена</button><button class="btn" id="botProfileSubmit" type="submit">Подключить</button></div></div></form></div>
+<div class="overlay-modal" id="forwardModal" hidden><form class="modal-card" id="forwardForm"><div class="modal-head"><strong>➦ Переслать сообщение</strong><button class="icon-btn" data-close-modal="forwardModal" type="button">×</button></div><div class="modal-body"><label class="field"><span>Куда переслать?</span><select class="input" id="forwardTarget" required></select></label><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn secondary" type="button" data-close-modal="forwardModal">Отмена</button><button class="btn" type="submit">Переслать</button></div></div></form></div>
 <div class="toast" id="toast" role="status"></div>
 <div class="notification-prompt" id="notificationPrompt" role="dialog" aria-modal="true" aria-labelledby="notificationTitle">
  <div class="notification-card">
@@ -416,6 +418,7 @@ let chatFilter="all";
 let favorites=new Set();
 let unreadChats=new Set();
 let currentViewerMessage=null;
+let pendingForwardMessage=null;
 let globalSearchTimer=null;
 let botProfiles=[];
 
@@ -570,17 +573,24 @@ async function switchBotProfile(server){
   $("connectedServer").textContent=bot.server;await loadChats();updateDetailsPanel();try{await api("/api/webhook/register",{method:"POST",body:"{}"});}catch(error){toast((currentLang==="ru"?"Webhook не обновлён: ":"Webhook not updated: ")+error.message);}toast(currentLang==="ru"?"Подключено: "+bot.name:"Connected: "+bot.name);
  }catch(error){toast(error.message);renderBotProfiles();}
 }
-async function addBotProfile(){
- const serverInput=window.prompt(currentLang==="ru"?"Введи HTTPS-адрес Render нового бота:":"Enter the new bot's Render HTTPS URL:");if(!serverInput)return;
- let server;try{server=cleanServerUrl(serverInput);}catch(error){toast(error.message);return;}
- const key=window.prompt(currentLang==="ru"?"Введи ADMIN_API_KEY этого бота:":"Enter this bot's ADMIN_API_KEY:");if(!key)return;
- try{
-  const response=await fetch(server+"/api/session",{headers:{"X-Admin-Key":key.trim()}});const data=await response.json().catch(()=>({}));
-  if(!response.ok||!data.ok)throw new Error(data.error||tr("notConnected"));
-  const name=window.prompt(currentLang==="ru"?"Название подключения:":"Connection name:",new URL(server).hostname)||new URL(server).hostname;
-  botProfiles=botProfiles.filter(item=>item.server!==server);botProfiles.push({id:server,name:name.trim().slice(0,32),server,key:key.trim()});saveBotProfiles();await switchBotProfile(server);
- }catch(error){toast(error.message);}
+function addBotProfile(){
+ $("botProfileName").value="";$("botProfileServer").value="";$("botProfileKey").value="";
+ $("addBotModal").hidden=false;$("botProfileServer").focus();
 }
+$("botProfileForm").addEventListener("submit",async event=>{
+ event.preventDefault();const button=$("botProfileSubmit");button.disabled=true;
+ try{
+  const server=cleanServerUrl($("botProfileServer").value),key=$("botProfileKey").value.trim();
+  if(!key)throw new Error(tr("keyRequired"));
+  const response=await fetch(server+"/api/session",{headers:{"X-Admin-Key":key}});const data=await response.json().catch(()=>({}));
+  if(!response.ok||!data.ok)throw new Error(data.error||tr("notConnected"));
+  const name=$("botProfileName").value.trim()||new URL(server).hostname;
+  botProfiles=botProfiles.filter(item=>item.server!==server);botProfiles.push({id:server,name:name.slice(0,32),server,key});saveBotProfiles();
+  closeOverlay("addBotModal");await switchBotProfile(server);
+ }catch(error){toast(error.message);}
+ finally{button.disabled=false;}
+});
+
 function loadLocalChatState(){
  const cfg=connection();const suffix=encodeURIComponent(cfg.server||"default");
  try{favorites=new Set(JSON.parse(localStorage.getItem("tg_favorites_"+suffix)||"[]"));unreadChats=new Set(JSON.parse(localStorage.getItem("tg_unread_"+suffix)||"[]"));}catch(_){favorites=new Set();unreadChats=new Set();}
@@ -814,10 +824,8 @@ async function runMessageAction(action){
  }
  if(action==="forward"){
   const targets=chats.filter(chat=>String(chat.chat_id)!==String(activeChatId));if(!targets.length){toast(currentLang==="ru"?"Нет другого чата для пересылки.":"No other chat to forward to.");return;}
-  const options=targets.slice(0,40).map((chat,index)=>index+": "+displayName(chat)+" ("+chat.chat_id+")").join("\n");
-  const choice=window.prompt((currentLang==="ru"?"Введи номер чата для пересылки:\n":"Enter the chat number to forward to:\n")+options,"0");
-  if(choice===null)return;const target=targets[Number(choice)];if(!target||!Number.isInteger(Number(choice))){toast(currentLang==="ru"?"Неверный номер чата.":"Invalid chat number.");return;}
-  try{await api("/api/forward-message",{method:"POST",body:JSON.stringify({source_chat_id:activeChatId,target_chat_id:target.chat_id,message_id:message.telegram_message_id})});toast(currentLang==="ru"?"Сообщение переслано в "+displayName(target):"Message forwarded to "+displayName(target));await loadChats();}catch(error){toast(error.message);}return;
+  const select=$("forwardTarget");select.replaceChildren();targets.forEach(chat=>{const option=document.createElement("option");option.value=chat.chat_id;option.textContent=displayName(chat)+" · "+chat.chat_id;select.append(option);});
+  pendingForwardMessage=message;$("forwardModal").hidden=false;return;
  }
  if(action==="pin"||action==="unpin"){
   try{
@@ -1118,6 +1126,13 @@ $("clearChatBtn").addEventListener("click",async()=>{
 });
 
 
+
+$("forwardForm").addEventListener("submit",async event=>{
+ event.preventDefault();const message=pendingForwardMessage,targetId=$("forwardTarget").value;if(!message||!targetId)return;
+ const target=chats.find(chat=>String(chat.chat_id)===String(targetId));const button=$("forwardForm").querySelector('button[type="submit"]');button.disabled=true;
+ try{await api("/api/forward-message",{method:"POST",body:JSON.stringify({source_chat_id:activeChatId,target_chat_id:targetId,message_id:message.telegram_message_id})});closeOverlay("forwardModal");pendingForwardMessage=null;toast(currentLang==="ru"?"Сообщение переслано в "+displayName(target):"Message forwarded to "+displayName(target));await loadChats();}
+ catch(error){toast(error.message);}finally{button.disabled=false;}
+});
 $("globalSearchBtn").addEventListener("click",()=>{$("globalSearchModal").hidden=false;$("globalSearchInput").focus();});
 $("globalSearchInput").addEventListener("input",()=>{
  clearTimeout(globalSearchTimer);const query=$("globalSearchInput").value.trim();const results=$("globalSearchResults");
