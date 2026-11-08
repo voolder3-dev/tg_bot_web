@@ -292,18 +292,39 @@ app.get("/api/media/:messageId", requireAdmin, async (req, res) => {
     );
     if (!result.rows.length) return res.status(404).json({ ok: false, error: "Файл не найден." });
     const media = result.rows[0];
-    const fileInfo = await telegram("getFile", { file_id: media.media_file_id });
-    if (!fileInfo.file_path) return res.status(502).json({ ok: false, error: "Telegram не вернул путь к файлу." });
-    const fileResponse = await fetch(`https://api.telegram.org/file/bot${BOT_TOKEN}/${fileInfo.file_path}`);
-    if (!fileResponse.ok || !fileResponse.body) {
-      return res.status(502).json({ ok: false, error: "Не удалось получить файл из Telegram." });
+    let fileBuffer = null;
+    let contentType = media.media_mime_type || "application/octet-stream";
+    let lastError = null;
+    // Telegram/Render connections can fail transiently; retry the complete download.
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      let controller;
+      let timeout;
+      try {
+        const fileInfo = await telegram("getFile", { file_id: media.media_file_id });
+        if (!fileInfo.file_path) throw new Error("Telegram не вернул путь к файлу.");
+        controller = new AbortController();
+        timeout = setTimeout(() => controller.abort(), 60000);
+        const fileResponse = await fetch(`https://api.telegram.org/file/bot${BOT_TOKEN}/${fileInfo.file_path}`, { signal: controller.signal });
+        if (!fileResponse.ok || !fileResponse.body) throw new Error("Telegram file HTTP " + fileResponse.status);
+        const data = Buffer.from(await fileResponse.arrayBuffer());
+        if (!data.length) throw new Error("Telegram вернул пустой файл.");
+        fileBuffer = data;
+        contentType = media.media_mime_type || fileResponse.headers.get("content-type") || contentType;
+        break;
+      } catch (error) {
+        lastError = error;
+        console.warn(`Media download attempt ${attempt}/3 failed:`, error.message);
+        if (attempt < 3) await new Promise(resolve => setTimeout(resolve, attempt * 700));
+      } finally {
+        if (timeout) clearTimeout(timeout);
+      }
     }
-    const { Readable } = require("node:stream");
-    res.setHeader("Content-Type", media.media_mime_type || fileResponse.headers.get("content-type") || "application/octet-stream");
+    if (!fileBuffer) throw lastError || new Error("Не удалось получить файл из Telegram.");
+    res.setHeader("Content-Type", contentType);
     res.setHeader("Cache-Control", "private, max-age=300");
     res.setHeader("Content-Disposition", "inline");
-    if (fileResponse.headers.get("content-length")) res.setHeader("Content-Length", fileResponse.headers.get("content-length"));
-    Readable.fromWeb(fileResponse.body).pipe(res);
+    res.setHeader("Content-Length", String(fileBuffer.length));
+    res.end(fileBuffer);
   } catch (error) {
     console.error("Media proxy failed:", error.message);
     if (!res.headersSent) res.status(502).json({ ok: false, error: "Не удалось загрузить медиа из Telegram." });
