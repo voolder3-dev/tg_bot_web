@@ -290,6 +290,24 @@ body[data-mode="light"][data-theme] .conversation-head,body[data-mode="light"][d
 body[data-mode="light"][data-theme] .theme-picker select{color:var(--text);background-color:#fff}
 @media(prefers-reduced-motion:reduce){body[data-mode="light"],body[data-mode="light"] *{transition:none!important;animation:none!important}}
 
+
+/* Global workspace update */
+.chat-tools{display:flex;align-items:center;gap:6px}.icon-btn{width:34px;height:34px;border:1px solid var(--border);border-radius:10px;background:var(--field);color:var(--text);cursor:pointer;font-size:15px}.icon-btn:hover{border-color:var(--purple);background:color-mix(in srgb,var(--purple) 13%,var(--panel))}
+.chat-filters{display:flex;gap:6px;padding:9px 12px;border-bottom:1px solid var(--border);overflow:auto}.chat-filter{border:1px solid var(--border);border-radius:20px;padding:6px 10px;background:transparent;color:var(--muted);font-size:10px;font-weight:800;white-space:nowrap;cursor:pointer}.chat-filter.active{color:var(--text);border-color:var(--purple);background:color-mix(in srgb,var(--purple) 15%,var(--panel))}
+.chat-fav{margin-left:auto;border:0;background:transparent;color:var(--muted);font-size:17px;cursor:pointer;opacity:.65}.chat-fav.active{color:#f5c451;opacity:1}.chat-fav:hover{transform:scale(1.15)}
+.chat-header-person{display:flex;align-items:center;gap:11px;min-width:0}.chat-header-avatar{width:38px;height:38px;flex:0 0 38px;border-radius:13px;display:grid;place-items:center;background:linear-gradient(135deg,var(--purple),var(--accent2));font-weight:800;box-shadow:0 5px 18px color-mix(in srgb,var(--purple) 25%,transparent)}
+.chat-header-copy{min-width:0}.chat-header-copy .person{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chat-header-copy .muted{margin-top:3px}
+.bot-switcher{max-width:150px;min-width:90px;border:1px solid var(--border);border-radius:9px;background:var(--field);color:var(--text);padding:7px 8px;font:600 10px Inter,system-ui,sans-serif}
+.layout.details-hidden{grid-template-columns:minmax(220px,260px) minmax(0,1fr)!important}.layout.details-hidden .details-panel{display:none!important}
+.message-context-menu button:disabled{opacity:.35;cursor:not-allowed}
+.overlay-modal{position:fixed;inset:0;z-index:220;display:grid;place-items:center;padding:20px;background:#050711d9;backdrop-filter:blur(12px)}.overlay-modal[hidden]{display:none}.modal-card{width:min(720px,100%);max-height:min(82vh,760px);overflow:hidden;border:1px solid var(--border);border-radius:19px;background:var(--panel);box-shadow:0 24px 90px #0009;display:flex;flex-direction:column;animation:appear .2s ease both}.modal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 16px;border-bottom:1px solid var(--border)}.modal-head strong{font-size:13px}.modal-body{padding:14px;overflow:auto;min-height:0}.global-search-input{width:100%;padding:12px;border:1px solid var(--border);border-radius:11px;background:var(--field);color:var(--text);outline:none}.search-results{display:grid;gap:7px;margin-top:12px}.search-result{width:100%;text-align:left;padding:11px;border:1px solid var(--border);border-radius:11px;background:color-mix(in srgb,var(--panel) 88%,var(--bg));color:var(--text);cursor:pointer}.search-result:hover{border-color:var(--purple);transform:translateY(-1px)}.search-result strong{display:block;font-size:11px;margin-bottom:4px}.search-result span{font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.media-viewer-content{display:grid;place-items:center;min-height:240px;max-height:70vh;padding:12px}.media-viewer-content img,.media-viewer-content video{max-width:100%;max-height:66vh;object-fit:contain;border-radius:12px}.media-viewer-content audio{width:min(460px,100%)}
+.emoji-picker{position:absolute;z-index:100;left:14px;bottom:76px;width:min(310px,calc(100vw - 40px));padding:12px;border:1px solid var(--border);border-radius:15px;background:var(--panel);box-shadow:0 15px 45px #0009;display:grid;grid-template-columns:repeat(8,1fr);gap:4px}.emoji-picker[hidden]{display:none}.emoji-picker button{border:0;border-radius:8px;background:transparent;padding:6px 2px;font-size:20px;cursor:pointer}.emoji-picker button:hover{background:color-mix(in srgb,var(--purple) 18%,var(--panel));transform:scale(1.12)}
+.file-chip{display:flex;align-items:center;gap:9px;max-width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:11px;background:color-mix(in srgb,var(--purple) 9%,var(--panel));font-size:11px}.file-chip[hidden]{display:none}.file-chip-name{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.file-chip-size{color:var(--muted);white-space:nowrap}.file-chip button{border:0;background:transparent;color:var(--muted);font-size:17px;cursor:pointer}
+@keyframes featurePop{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+.search-result,.chat-fav,.icon-btn,.chat-filter,.emoji-picker button{transition:transform .18s ease,background .18s ease,border-color .18s ease}
+@media(max-width:800px){.bot-switcher{max-width:105px}.chat-header-avatar{width:32px;height:32px;flex-basis:32px}.chat-tools{gap:4px}.icon-btn{width:30px;height:30px}}
+@media(prefers-reduced-motion:reduce){.overlay-modal,.search-result,.emoji-picker button{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
@@ -298,7 +316,7 @@ body[data-mode="light"][data-theme] .theme-picker select{color:var(--text);backg
 <div class="app" id="dashboard" hidden>
 <header class="top">
   <div class="brand"><div class="logo">✈</div><div><h1>Telegram Dashboard</h1><p data-i18n="brandSub">Панель управления ботом</p></div></div>
-  <div class="status"><span class="dot" id="statusDot"></span><span id="statusText" data-i18n="checking">Проверка подключения</span><button class="logout" id="logoutBtn" type="button" data-i18n="logout">Выйти</button></div>
+  <div class="status"><span class="dot" id="statusDot"></span><span id="statusText" data-i18n="checking">Проверка подключения</span><select class="bot-switcher" id="botSwitcher" aria-label="Подключённые боты"><option value="">Мои боты</option></select><button class="icon-btn" id="addBotBtn" type="button" title="Добавить бота">＋</button><button class="logout" id="logoutBtn" type="button" data-i18n="logout">Выйти</button></div>
 </header>
 <h2 data-i18n="messagesTitle">Сообщения и чаты</h2>
 <p class="sub"><span data-i18n="connectedServer">Подключённый сервер:</span> <span id="connectedServer"></span>. <span data-i18n="usersAppear">Пользователи появятся здесь после того, как напишут боту.</span></p>
@@ -307,18 +325,18 @@ body[data-mode="light"][data-theme] .theme-picker select{color:var(--text);backg
 
 <main class="layout">
   <section class="panel">
-    <div class="panel-head"><h3 data-i18n="chatList">💬 Список чатов</h3><span class="muted" id="chatCount">0 чатов</span></div>
-    <div class="search"><input id="searchInput" type="search" placeholder="Поиск по имени или ID…" data-i18n-placeholder="searchPlaceholder"></div>
+    <div class="panel-head"><h3 data-i18n="chatList">💬 Список чатов</h3><div class="chat-tools"><span class="muted" id="chatCount">0 чатов</span><button class="icon-btn" id="globalSearchBtn" type="button" title="Поиск по сообщениям">⌕</button></div></div>
+    <div class="search"><input id="searchInput" type="search" placeholder="Поиск по имени или ID…" data-i18n-placeholder="searchPlaceholder"></div><div class="chat-filters"><button class="chat-filter active" data-chat-filter="all" type="button">Все</button><button class="chat-filter" data-chat-filter="favorites" type="button">★ Избранное</button><button class="chat-filter" data-chat-filter="unread" type="button">Непрочитанные</button></div>
     <div class="chat-list" id="chatList"><div class="empty" data-i18n="emptyChats">После подключения здесь появятся чаты.</div></div>
   </section>
   <section class="panel conversation" id="conversation">
-    <div class="conversation-head"><div><div class="person" id="activeName" data-i18n="chooseChat">Выбери чат</div><div class="muted" id="activeId" data-i18n="conversationHere">Переписка появится здесь</div></div><div class="conversation-actions"><button class="btn danger" id="clearChatBtn" type="button" disabled data-i18n="clearChat">Очистить чат</button><button class="btn secondary" id="refreshBtn" type="button" data-i18n="refresh">Обновить</button></div></div>
+    <div class="conversation-head"><div class="chat-header-person"><div class="chat-header-avatar" id="activeAvatar">T</div><div class="chat-header-copy"><div class="person" id="activeName" data-i18n="chooseChat">Выбери чат</div><div class="muted" id="activeId" data-i18n="conversationHere">Переписка появится здесь</div></div></div><div class="conversation-actions"><button class="btn secondary" id="toggleDetailsBtn" type="button" title="Показать/скрыть информацию">ⓘ</button><button class="btn danger" id="clearChatBtn" type="button" disabled data-i18n="clearChat">Очистить чат</button><button class="btn secondary" id="refreshBtn" type="button" data-i18n="refresh">Обновить</button></div></div>
     <div class="conversation-body"><div class="conversation-tabs"><button class="conversation-tab active" id="chatTabBtn" type="button">💬 Чат</button><button class="conversation-tab" id="mediaTabBtn" type="button">▦ Медиа</button></div>
     <div class="messages" id="messages"><div class="empty" data-i18n="noChatSelected">📭<br>Пока чат не выбран.</div></div>
     <div class="media-gallery" id="mediaGallery" hidden></div></div>
     <div class="reply-composer" id="replyComposer" hidden><span>↩</span><span class="reply-composer-text" id="replyComposerText"></span><button id="cancelReplyBtn" type="button">×</button></div>
     <div class="drop-overlay" id="dropOverlay" aria-hidden="true"><div class="drop-overlay-card"><div class="drop-overlay-icon">⇩</div><strong data-i18n="dropTitle">Отпусти файл, чтобы прикрепить</strong><span data-i18n="dropHint">Один файл за раз · фото до 10 МБ · остальные до 20 МБ</span></div></div>
-     <form class="composer" id="sendForm"><input id="mediaInput" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.zip" hidden><button class="attach-btn" id="attachBtn" type="button" disabled aria-label="Attach file" title="Прикрепить файл">＋</button><button class="voice-record-btn" id="voiceBtn" type="button" disabled aria-label="Записать голосовое" title="Записать голосовое">🎙</button><textarea class="textarea" id="messageText" maxlength="4096" placeholder="Напиши сообщение или подпись…" data-i18n-placeholder="messagePlaceholder" disabled></textarea><button class="btn" id="sendBtn" disabled data-i18n="send">Отправить</button><div class="voice-recorder-panel" id="voiceRecorderPanel" hidden><div class="voice-recorder-info"><span class="voice-recorder-title" data-i18n="voiceRecordingTitle">Идёт запись</span><span class="voice-recorder-timer" id="voiceTimer">00:00</span></div><div class="voice-wave" id="voiceWave" aria-label="Волна записи"></div><button class="voice-cancel" id="voiceCancelBtn" type="button" title="Отменить запись" aria-label="Отменить запись">×</button></div><div class="send-progress" id="sendProgress" aria-live="polite"></div><div class="file-status" id="fileStatus" aria-live="polite"></div><div class="voice-status" id="voiceStatus" aria-live="polite"></div></form>
+     <form class="composer" id="sendForm"><input id="mediaInput" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.zip" hidden><button class="attach-btn" id="attachBtn" type="button" disabled aria-label="Attach file" title="Прикрепить файл">＋</button><button class="attach-btn" id="emojiBtn" type="button" disabled aria-label="Эмодзи" title="Эмодзи">☺</button><button class="voice-record-btn" id="voiceBtn" type="button" disabled aria-label="Записать голосовое" title="Записать голосовое">🎙</button><textarea class="textarea" id="messageText" maxlength="4096" placeholder="Напиши сообщение или подпись…" data-i18n-placeholder="messagePlaceholder" disabled></textarea><button class="btn" id="sendBtn" disabled data-i18n="send">Отправить</button><div class="voice-recorder-panel" id="voiceRecorderPanel" hidden><div class="voice-recorder-info"><span class="voice-recorder-title" data-i18n="voiceRecordingTitle">Идёт запись</span><span class="voice-recorder-timer" id="voiceTimer">00:00</span></div><div class="voice-wave" id="voiceWave" aria-label="Волна записи"></div><button class="voice-cancel" id="voiceCancelBtn" type="button" title="Отменить запись" aria-label="Отменить запись">×</button></div><div class="emoji-picker" id="emojiPicker" hidden></div><div class="file-chip" id="fileChip" hidden><span>📎</span><span class="file-chip-name" id="fileChipName"></span><span class="file-chip-size" id="fileChipSize"></span><button id="removeFileBtn" type="button" aria-label="Убрать файл">×</button></div><div class="send-progress" id="sendProgress" aria-live="polite"></div><div class="file-status" id="fileStatus" aria-live="polite"></div><div class="voice-status" id="voiceStatus" aria-live="polite"></div></form>
     <div class="hint" data-i18n="sendHint">Сообщения отправляются от имени твоего Telegram-бота. Пользователь должен предварительно начать диалог с ботом.</div>
   </section>
   <aside class="panel details-panel" id="detailsPanel"><div class="panel-head"><h3 data-i18n="playerDetails">👤 Информация</h3><span class="muted" id="detailsStatus">—</span></div>
@@ -328,10 +346,13 @@ body[data-mode="light"][data-theme] .theme-picker select{color:var(--text);backg
   </aside>
 </main>
 <div class="message-context-menu" id="messageContextMenu" role="menu" hidden>
- <button type="button" data-action="reply">↩ <span data-i18n="replyAction">Ответить</span></button><button type="button" data-action="pin">📌 <span data-i18n="pinAction">Закрепить</span></button><button type="button" data-action="unpin" hidden>📍 <span data-i18n="unpinAction">Открепить</span></button><div class="menu-divider"></div><button type="button" class="danger" data-action="delete">🗑 <span data-i18n="deleteAction">Удалить сообщение</span></button>
+ <button type="button" data-action="reply">↩ <span data-i18n="replyAction">Ответить</span></button><button type="button" data-action="copy">⧉ <span>Копировать текст</span></button><button type="button" data-action="edit">✎ <span>Редактировать</span></button><button type="button" data-action="forward">➦ <span>Переслать в чат…</span></button><button type="button" data-action="pin">📌 <span data-i18n="pinAction">Закрепить</span></button><button type="button" data-action="unpin" hidden>📍 <span data-i18n="unpinAction">Открепить</span></button><div class="menu-divider"></div><button type="button" class="danger" data-action="delete">🗑 <span data-i18n="deleteAction">Удалить сообщение</span></button>
 </div>
 <footer class="footer" data-i18n="footer">Telegram Bot Dashboard · Не публикуй ключ доступа и токен бота</footer>
 </div>
+
+<div class="overlay-modal" id="globalSearchModal" hidden><div class="modal-card"><div class="modal-head"><strong>⌕ Поиск по всем сообщениям</strong><button class="icon-btn" data-close-modal="globalSearchModal" type="button">×</button></div><div class="modal-body"><input class="global-search-input" id="globalSearchInput" type="search" placeholder="Введи слово или фразу (от 2 символов)…"><div class="search-results" id="globalSearchResults"><div class="empty">Начни вводить запрос для поиска.</div></div></div></div></div>
+<div class="overlay-modal" id="mediaViewer" hidden><div class="modal-card"><div class="modal-head"><strong id="mediaViewerTitle">Просмотр медиа</strong><button class="icon-btn" data-close-modal="mediaViewer" type="button">×</button></div><div class="media-viewer-content" id="mediaViewerContent"></div></div></div>
 <div class="toast" id="toast" role="status"></div>
 <div class="notification-prompt" id="notificationPrompt" role="dialog" aria-modal="true" aria-labelledby="notificationTitle">
  <div class="notification-card">
@@ -386,11 +407,18 @@ function applyLanguage(lang){
  $("statusText").textContent=tr($("dashboard").hidden?"offline": "connected");
  $("chatCount").textContent=chats.length+" "+(chats.length===1?tr("chat"):tr("chats"));
  if(activeChatId){$("activeId").textContent=tr("chatId")+activeChatId;}
- renderChats();
+ renderChats();renderBotProfiles();
 }
 document.querySelectorAll(".lang-btn").forEach(b=>b.addEventListener("click",()=>applyLanguage(b.dataset.lang)));
 
 let chats = [], activeChatId = null, refreshTimer = null, busy = false, refreshQueued = false;
+let chatFilter="all";
+let favorites=new Set();
+let unreadChats=new Set();
+let currentViewerMessage=null;
+let globalSearchTimer=null;
+let botProfiles=[];
+
 const chatElements = new Map();
 let currentMessages=[];let pendingMessages=null;let replyTarget=null;let currentConversationTab="chat";let pinnedMessage=null;let contextMessage=null;
 let knownIncomingMessages = new Map();
@@ -464,7 +492,7 @@ function checkForNewMessages(nextChats){
   if(chat.last_message_direction==="incoming"&&messageId&&previous!==messageId){
    notifyIncoming(chat);
    if(previous!==undefined){
-    chatsWithFreshMessages.add(id);
+    chatsWithFreshMessages.add(id);unreadChats.add(id);saveLocalChatState();
     // Сохраняем перемещение чата вниз между фоновыми обновлениями.
     chatsMovedToBottom.delete(id);
     chatsMovedToBottom.add(id);
@@ -519,6 +547,53 @@ $("notificationAllow").addEventListener("click",async()=>{
 });
 function toast(message){const el=$("toast");el.textContent=message;el.classList.add("show");clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove("show"),4000);}
 function connection(){return {server:localStorage.getItem("tg_dashboard_server")||sessionStorage.getItem("tg_dashboard_server")||"",key:localStorage.getItem("tg_dashboard_key")||sessionStorage.getItem("tg_dashboard_key")||""};}
+function loadBotProfiles(){
+ try{botProfiles=JSON.parse(localStorage.getItem("tg_dashboard_bots")||"[]");if(!Array.isArray(botProfiles))botProfiles=[];}catch(_){botProfiles=[];}
+ const cfg=connection();if(cfg.server&&cfg.key&&!botProfiles.some(b=>b.server===cfg.server)){botProfiles.unshift({id:cfg.server,name:new URL(cfg.server).hostname.replace(/^www\\./,""),server:cfg.server,key:cfg.key});saveBotProfiles();}
+ renderBotProfiles();
+}
+function saveBotProfiles(){localStorage.setItem("tg_dashboard_bots",JSON.stringify(botProfiles));renderBotProfiles();}
+function renderBotProfiles(){
+ const select=$("botSwitcher");if(!select)return;const active=connection().server;
+ select.replaceChildren();const placeholder=document.createElement("option");placeholder.value="";placeholder.textContent=currentLang==="ru"?"Боты":"Bots";select.append(placeholder);
+ botProfiles.forEach(bot=>{const option=document.createElement("option");option.value=bot.id;option.textContent=bot.name;select.append(option);});
+ select.value=active&&botProfiles.some(b=>b.server===active)?active:"";
+}
+async function switchBotProfile(server){
+ const bot=botProfiles.find(item=>item.server===server);if(!bot)return;
+ try{
+  const response=await fetch(bot.server+"/api/session",{headers:{"X-Admin-Key":bot.key}});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok||!data.ok)throw new Error(data.error||"Не удалось подключиться к боту.");
+  localStorage.setItem("tg_dashboard_server",bot.server);localStorage.setItem("tg_dashboard_key",bot.key);
+  chats=[];activeChatId=null;currentMessages=[];chatElements.clear();showDashboard();$("activeName").textContent=tr("chooseChat");$("activeId").textContent=tr("conversationHere");$("messages").replaceChildren();
+  $("connectedServer").textContent=bot.server;await loadChats();updateDetailsPanel();toast(currentLang==="ru"?"Подключено: "+bot.name:"Connected: "+bot.name);
+ }catch(error){toast(error.message);renderBotProfiles();}
+}
+async function addBotProfile(){
+ const serverInput=window.prompt(currentLang==="ru"?"Введи HTTPS-адрес Render нового бота:":"Enter the new bot's Render HTTPS URL:");if(!serverInput)return;
+ let server;try{server=cleanServerUrl(serverInput);}catch(error){toast(error.message);return;}
+ const key=window.prompt(currentLang==="ru"?"Введи ADMIN_API_KEY этого бота:":"Enter this bot's ADMIN_API_KEY:");if(!key)return;
+ try{
+  const response=await fetch(server+"/api/session",{headers:{"X-Admin-Key":key.trim()}});const data=await response.json().catch(()=>({}));
+  if(!response.ok||!data.ok)throw new Error(data.error||tr("notConnected"));
+  const name=window.prompt(currentLang==="ru"?"Название подключения:":"Connection name:",new URL(server).hostname)||new URL(server).hostname;
+  botProfiles=botProfiles.filter(item=>item.server!==server);botProfiles.push({id:server,name:name.trim().slice(0,32),server,key:key.trim()});saveBotProfiles();await switchBotProfile(server);
+ }catch(error){toast(error.message);}
+}
+function loadLocalChatState(){
+ const cfg=connection();const suffix=encodeURIComponent(cfg.server||"default");
+ try{favorites=new Set(JSON.parse(localStorage.getItem("tg_favorites_"+suffix)||"[]"));unreadChats=new Set(JSON.parse(localStorage.getItem("tg_unread_"+suffix)||"[]"));}catch(_){favorites=new Set();unreadChats=new Set();}
+}
+function saveLocalChatState(){
+ const suffix=encodeURIComponent(connection().server||"default");
+ localStorage.setItem("tg_favorites_"+suffix,JSON.stringify([...favorites]));
+ localStorage.setItem("tg_unread_"+suffix,JSON.stringify([...unreadChats]));
+}
+function setChatFilter(filter){
+ chatFilter=filter;document.querySelectorAll("[data-chat-filter]").forEach(button=>button.classList.toggle("active",button.dataset.chatFilter===filter));renderChats();
+}
+
 function cleanServerUrl(value){const url=new URL(value.trim());if(url.protocol!=="https:"&&!(url.protocol==="http:"&&["localhost","127.0.0.1"].includes(url.hostname)))throw new Error(tr("https"));if(url.username||url.password||url.search||url.hash)throw new Error(tr("badUrl"));if(url.pathname!=="/")throw new Error(tr("pathUrl"));return url.origin;}
 async function api(path,options={}){const cfg=connection();if(!cfg.server||!cfg.key)throw new Error(tr("loginFirst"));const headers={"X-Admin-Key":cfg.key,...(options.headers||{})};if(!(options.body instanceof FormData))headers["Content-Type"]="application/json";let r;try{r=await fetch(cfg.server+path,{...options,headers});}catch(error){throw new Error((currentLang==="ru"?"Не удалось связаться с сервером: ":"Could not reach server: ")+error.message);}const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{};}catch(_){d={};}if(r.status===401){showLogin();throw new Error(d.error||tr("checkKey"));}if(!r.ok||d.ok!==true){const detail=d.error||(raw?raw.slice(0,220).replace(/\\s+/g," "):"");throw new Error((detail||tr("serverError"))+" (HTTP "+r.status+")");}return d;}
 function showLogin(){updatePageTitle();if(voiceRecorder&&voiceRecorder.state!=="inactive"){voiceRecorder.onstop=null;voiceRecorder.stop();}voiceChunks=[];voiceTargetChatId=null;voiceCancelRequested=true;stopVoiceVisualizer();$("voiceRecorderPanel").hidden=true;if(voiceStream)voiceStream.getTracks().forEach(track=>track.stop());voiceStream=null;voiceRecorder=null;$("voiceBtn").disabled=true;$("voiceBtn").classList.remove("recording");$("voiceBtn").textContent="🎙";$("voiceStatus").textContent="";if(refreshTimer)clearInterval(refreshTimer);refreshTimer=null;$("dashboard").hidden=true;$("loginView").hidden=false;$("statusText").textContent=tr("offline");$("statusDot").classList.remove("online");$("messageText").disabled=true;$("sendBtn").disabled=true;$("attachBtn").disabled=true;$("clearChatBtn").disabled=true;}
@@ -526,7 +601,7 @@ function showDashboard(){$("loginView").hidden=true;$("dashboard").hidden=false;
 function displayName(c){return c.custom_name||c.title||[c.first_name,c.last_name].filter(Boolean).join(" ")||(c.username?"@"+c.username:tr("user"));}
 function renderChats(){
  const q=$("searchInput").value.trim().toLowerCase();
- const v=chats.filter(c=>[displayName(c),c.username,c.chat_id,c.last_message].join(" ").toLowerCase().includes(q));
+ const v=chats.filter(c=>[displayName(c),c.username,c.chat_id,c.last_message].join(" ").toLowerCase().includes(q)).filter(c=>chatFilter==="favorites"?favorites.has(String(c.chat_id)):chatFilter==="unread"?unreadChats.has(String(c.chat_id)):true);
  $("chatCount").textContent=chats.length+" "+(chats.length===1?tr("chat"):tr("chats"));
  const list=$("chatList"),previousScrollTop=list.scrollTop;
  if(!v.length){
@@ -561,8 +636,8 @@ function renderChats(){
    const info=document.createElement("div");info.className="chat-info";
    const n=document.createElement("div");n.className="chat-name";
    const p=document.createElement("div");p.className="chat-preview";
-   const chatId=document.createElement("div");chatId.className="chat-id";
-   info.append(n,p,chatId);item.append(av,info);
+   const chatId=document.createElement("div");chatId.className="chat-id";const fav=document.createElement("button");fav.type="button";fav.className="chat-fav";fav.title="Избранное";fav.addEventListener("click",event=>{event.stopPropagation();const chatIdValue=item.dataset.chatId;if(favorites.has(chatIdValue))favorites.delete(chatIdValue);else favorites.add(chatIdValue);saveLocalChatState();renderChats();});
+   info.append(n,p,chatId);item.append(av,info,fav);item._favorite=fav;
    item._avatar=av;item._name=n;item._preview=p;item._id=chatId;
    chatElements.set(id,item);
   }
@@ -571,7 +646,7 @@ function renderChats(){
   item._avatar.textContent=displayName(c).slice(0,1).toUpperCase()||"T";
   item._name.textContent=displayName(c);
   item._preview.textContent=c.last_message||"Нет сообщений";
-  item._id.textContent=tr("id")+c.chat_id;
+  item._id.textContent=tr("id")+c.chat_id;item._favorite.textContent=favorites.has(id)?"★":"☆";item._favorite.classList.toggle("active",favorites.has(id));
   // Reordering reuses the existing DOM node, so its entry animation does not replay.
   list.append(item);
  });
@@ -719,6 +794,9 @@ function hideMessageMenu(){$("messageContextMenu").hidden=true;contextMessage=nu
 function openMessageMenu(message,x,y){
  if(!message)return;contextMessage=message;const menu=$("messageContextMenu");
  const hasTelegramId=!!message.telegram_message_id;
+ menu.querySelector('[data-action="edit"]').hidden=!(message.direction==="outgoing"&&!message.media_type&&hasTelegramId);
+ menu.querySelector('[data-action="forward"]').hidden=!hasTelegramId;
+ menu.querySelector('[data-action="copy"]').hidden=!(message.text||"");
  const isPinned=!!(hasTelegramId&&pinnedMessage&&String(pinnedMessage.message_id)===String(message.telegram_message_id));
  menu.querySelector('[data-action="pin"]').hidden=!hasTelegramId||isPinned;
  menu.querySelector('[data-action="unpin"]').hidden=!isPinned;
@@ -729,6 +807,18 @@ function openMessageMenu(message,x,y){
 async function runMessageAction(action){
  const message=contextMessage;if(!message)return;hideMessageMenu();
  if(action==="reply"){setReplyTarget(message);return;}
+ if(action==="copy"){try{await navigator.clipboard.writeText(message.text||"");toast(currentLang==="ru"?"Текст скопирован.":"Text copied.");}catch(_){toast(currentLang==="ru"?"Не удалось скопировать текст.":"Could not copy text.");}return;}
+ if(action==="edit"){
+  const edited=window.prompt(currentLang==="ru"?"Измени текст сообщения:":"Edit message text:",message.text||"");if(edited===null||!edited.trim()||edited.trim()===(message.text||""))return;
+  try{await api("/api/chats/"+encodeURIComponent(activeChatId)+"/messages/"+encodeURIComponent(message.id),{method:"PATCH",body:JSON.stringify({text:edited.trim()})});await loadMessages({force:true});await loadChats();toast(currentLang==="ru"?"Сообщение изменено.":"Message edited.");}catch(error){toast(error.message);}return;
+ }
+ if(action==="forward"){
+  const targets=chats.filter(chat=>String(chat.chat_id)!==String(activeChatId));if(!targets.length){toast(currentLang==="ru"?"Нет другого чата для пересылки.":"No other chat to forward to.");return;}
+  const options=targets.slice(0,40).map((chat,index)=>index+": "+displayName(chat)+" ("+chat.chat_id+")").join("\n");
+  const choice=window.prompt((currentLang==="ru"?"Введи номер чата для пересылки:\n":"Enter the chat number to forward to:\n")+options,"0");
+  if(choice===null)return;const target=targets[Number(choice)];if(!target||!Number.isInteger(Number(choice))){toast(currentLang==="ru"?"Неверный номер чата.":"Invalid chat number.");return;}
+  try{await api("/api/forward-message",{method:"POST",body:JSON.stringify({source_chat_id:activeChatId,target_chat_id:target.chat_id,message_id:message.telegram_message_id})});toast(currentLang==="ru"?"Сообщение переслано в "+displayName(target):"Message forwarded to "+displayName(target));await loadChats();}catch(error){toast(error.message);}return;
+ }
  if(action==="pin"||action==="unpin"){
   try{
    await api("/api/"+(action==="pin"?"pin-message":"unpin-message"),{method:"POST",body:JSON.stringify({chat_id:activeChatId,message_id:message.telegram_message_id})});
@@ -772,9 +862,25 @@ function renderMediaGallery(){
    preview.addEventListener("error",showGalleryRetry);
    if("IntersectionObserver" in window){const io=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting)){io.disconnect();load();}});io.observe(card);}else load();
   }else{const icon=document.createElement("div");icon.textContent=m.media_type==="voice"?"🎙":m.media_type==="audio"?"♫":"📎";icon.style.cssText="height:100px;display:grid;place-items:center;font-size:32px";card.append(icon);}
-  card.append(label);card.addEventListener("click",()=>{setConversationTab("chat");const bubble=$("messages").querySelector('[data-message-id="'+m.id+'"]');if(bubble)bubble.scrollIntoView({behavior:"smooth",block:"center"});});gallery.append(card);
+  card.append(label);card.addEventListener("click",()=>openMediaViewer(m));gallery.append(card);
  });
 }
+
+async function openMediaViewer(message){
+ currentViewerMessage=message;$("mediaViewerTitle").textContent=(message.media_type||"media").toUpperCase()+" · "+new Date(message.created_at).toLocaleString(currentLang==="ru"?"ru-RU":"en-GB");
+ const box=$("mediaViewerContent");box.replaceChildren();const loading=document.createElement("div");loading.className="empty";loading.textContent=currentLang==="ru"?"Загрузка…":"Loading…";box.append(loading);$("mediaViewer").hidden=false;
+ try{
+  const url=await fetchMediaUrl(message.id);if(currentViewerMessage!==message)return;box.replaceChildren();
+  let element;
+  if(["video","animation","video_note","video_sticker"].includes(message.media_type)){element=document.createElement("video");element.controls=true;element.autoplay=true;}
+  else if(["voice","audio"].includes(message.media_type)){element=document.createElement("audio");element.controls=true;element.autoplay=true;}
+  else{element=document.createElement("img");element.alt=message.text||"Media";}
+  element.src=url;box.append(element);
+ }catch(error){box.replaceChildren();const failed=document.createElement("div");failed.className="empty";failed.textContent=(currentLang==="ru"?"Не удалось загрузить файл: ":"Could not load media: ")+error.message;box.append(failed);}
+}
+function closeOverlay(id){$(id).hidden=true;if(id==="mediaViewer"){$("mediaViewerContent").querySelectorAll("video,audio").forEach(media=>media.pause());currentViewerMessage=null;}}
+document.querySelectorAll("[data-close-modal]").forEach(button=>button.addEventListener("click",()=>closeOverlay(button.dataset.closeModal)));
+["globalSearchModal","mediaViewer"].forEach(id=>$(id).addEventListener("pointerdown",event=>{if(event.target===$(id))closeOverlay(id);}));
 async function renderMessages(ms,{animateNew=true}={}){
  const box=$("messages");
  const wasAtBottom=box.scrollHeight-box.scrollTop-box.clientHeight<80;
@@ -812,7 +918,7 @@ async function loadMessages({force=false}={}){
  if(!force&&activeAudio){pendingMessages=next;return;}
  pendingMessages=null;await renderMessages(next,{animateNew:!force});
 }
-async function selectChat(id){if(String(id)!==String(activeChatId))playChatOpenSound();activeChatId=String(id);currentMessages=[];pendingMessages=null;pinnedMessage=null;setReplyTarget(null);setConversationTab("chat");const c=chats.find(x=>String(x.chat_id)===activeChatId);$("activeName").textContent=c?displayName(c):tr("chooseChatName");$("activeId").textContent=tr("chatId")+activeChatId;updatePageTitle();$("messageText").disabled=false;$("sendBtn").disabled=false;$("attachBtn").disabled=false;$("voiceBtn").disabled=false;$("clearChatBtn").disabled=false;renderChats();updateDetailsPanel();await Promise.all([loadMessages({force:true}),refreshPinnedMessage()]);}
+async function selectChat(id){if(String(id)!==String(activeChatId))playChatOpenSound();activeChatId=String(id);unreadChats.delete(String(id));saveLocalChatState();$("emojiPicker").hidden=true;currentMessages=[];pendingMessages=null;pinnedMessage=null;setReplyTarget(null);setConversationTab("chat");const c=chats.find(x=>String(x.chat_id)===activeChatId);$("activeName").textContent=c?displayName(c):tr("chooseChatName");$("activeAvatar").textContent=(c?displayName(c):"T").slice(0,1).toUpperCase();$("activeId").textContent=tr("chatId")+activeChatId;updatePageTitle();$("messageText").disabled=false;$("sendBtn").disabled=false;$("attachBtn").disabled=false;$("voiceBtn").disabled=false;$("emojiBtn").disabled=false;$("clearChatBtn").disabled=false;renderChats();updateDetailsPanel();await Promise.all([loadMessages({force:true}),refreshPinnedMessage()]);}
 async function refreshAll(){if($("dashboard").hidden)return;if(busy){refreshQueued=true;return;}busy=true;try{await loadChats({detect:true});await loadMessages();}catch(e){if(!e.message.includes("Войди"))toast(e.message);}finally{busy=false;if(refreshQueued&&!$("dashboard").hidden){refreshQueued=false;queueMicrotask(()=>refreshAll());}}}
 $("loginForm").addEventListener("submit",async e=>{
  e.preventDefault();$("loginBtn").disabled=true;$("loginError").textContent="";
@@ -829,6 +935,7 @@ $("loginForm").addEventListener("submit",async e=>{
   if(!r.ok||d.ok!==true)throw new Error(d.error||tr("notConnected"));
   localStorage.setItem("tg_dashboard_server",server);
   localStorage.setItem("tg_dashboard_key",key);
+  botProfiles=botProfiles.filter(item=>item.server!==server);botProfiles.unshift({id:server,name:new URL(server).hostname.replace(/^www\\./,""),server,key});saveBotProfiles();loadLocalChatState();
   sessionStorage.removeItem("tg_dashboard_server");sessionStorage.removeItem("tg_dashboard_key");
   $("adminKey").value="";
   showDashboard();applyLanguage(currentLang);
@@ -936,14 +1043,25 @@ $("voiceCancelBtn").addEventListener("click",()=>{
 });
 $("voiceBtn").addEventListener("click",toggleVoiceRecording);
 
+
+const quickEmojis=["😀","😃","😄","😁","😅","😂","🙂","😉","😊","😍","🤔","🤨","😎","😭","😡","👍","👎","❤️","🔥","🎉","✨","✅","❌","🙏","👀","💀","🤝","💬","⭐","🚀","🎮","🐱","🐸","💎","🌳","⛏️","🏡","📌","⚡","💯","🥳","🙃","😴","🤗","🫡","💡","📎","🎯"];
+function buildEmojiPicker(){const picker=$("emojiPicker");picker.replaceChildren();quickEmojis.forEach(emoji=>{const button=document.createElement("button");button.type="button";button.textContent=emoji;button.addEventListener("click",()=>{const input=$("messageText"),start=input.selectionStart,end=input.selectionEnd;input.setRangeText(emoji,start,end,"end");input.focus();picker.hidden=true;});picker.append(button);});}
+buildEmojiPicker();
+$("emojiBtn").addEventListener("click",()=>{$("emojiPicker").hidden=!$("emojiPicker").hidden;});
+document.addEventListener("pointerdown",event=>{if(!$("emojiPicker").hidden&&!event.target.closest("#emojiPicker,#emojiBtn"))$("emojiPicker").hidden=true;});
+$("removeFileBtn").addEventListener("click",()=>{ $("mediaInput").value="";$("fileChip").hidden=true;$("fileStatus").textContent="";});
+function showSelectedFile(file){
+ $("fileChip").hidden=!file;
+ if(file){$("fileChipName").textContent=file.name;$("fileChipSize").textContent=file.size<1024*1024?(file.size/1024).toFixed(0)+" KB":(file.size/1024/1024).toFixed(1)+" MB";}
+}
 $("attachBtn").addEventListener("click",()=>$("mediaInput").click());
 function acceptDroppedFile(file){
  if(!file||!activeChatId)return;
- const transfer=new DataTransfer();transfer.items.add(file);$("mediaInput").files=transfer.files;
+ const transfer=new DataTransfer();transfer.items.add(file);$("mediaInput").files=transfer.files;showSelectedFile(file);
  $("fileStatus").textContent=(currentLang==="ru"?"Прикреплён файл: ":"Attached: ")+file.name+" · "+(file.size/1024/1024).toFixed(1)+" MB";
  $("messageText").focus();
 }
-$("mediaInput").addEventListener("change",()=>{const file=$("mediaInput").files[0];$("fileStatus").textContent=file?file.name+" · "+(file.size/1024/1024).toFixed(1)+" MB":"";});
+$("mediaInput").addEventListener("change",()=>{const file=$("mediaInput").files[0];showSelectedFile(file);$("fileStatus").textContent=file?file.name+" · "+(file.size/1024/1024).toFixed(1)+" MB":"";});
 let dragDepth=0;
 const dropSurface=$("conversation");
 dropSurface.addEventListener("dragenter",e=>{if(!Array.from(e.dataTransfer?.types||[]).includes("Files")||!activeChatId)return;e.preventDefault();dragDepth++;$("dropOverlay").classList.add("show");});
@@ -975,6 +1093,30 @@ $("clearChatBtn").addEventListener("click",async()=>{
  finally{button.disabled=!activeChatId;}
 });
 
+
+$("globalSearchBtn").addEventListener("click",()=>{$("globalSearchModal").hidden=false;$("globalSearchInput").focus();});
+$("globalSearchInput").addEventListener("input",()=>{
+ clearTimeout(globalSearchTimer);const query=$("globalSearchInput").value.trim();const results=$("globalSearchResults");
+ if(query.length<2){results.innerHTML='<div class="empty">Введите минимум 2 символа.</div>';return;}
+ results.innerHTML='<div class="empty">Поиск…</div>';
+ globalSearchTimer=setTimeout(async()=>{
+  try{
+   const data=await api("/api/search?q="+encodeURIComponent(query));results.replaceChildren();
+   if(!data.results?.length){const empty=document.createElement("div");empty.className="empty";empty.textContent=currentLang==="ru"?"Ничего не найдено.":"No results.";results.append(empty);return;}
+   data.results.forEach(result=>{
+    const button=document.createElement("button");button.type="button";button.className="search-result";
+    const title=document.createElement("strong");title.textContent=result.chat_name+" · "+new Date(result.created_at).toLocaleString();
+    const textNode=document.createElement("span");textNode.textContent=(result.direction==="outgoing"?"Вы: ":"")+result.text;
+    button.append(title,textNode);button.addEventListener("click",async()=>{closeOverlay("globalSearchModal");await selectChat(result.chat_id);const bubble=$("messages").querySelector('[data-message-id="'+result.id+'"]');if(bubble)bubble.scrollIntoView({behavior:"smooth",block:"center"});});
+    results.append(button);
+   });
+  }catch(error){results.innerHTML="";const failed=document.createElement("div");failed.className="empty";failed.textContent=error.message;results.append(failed);}
+ },280);
+});
+document.querySelectorAll("[data-chat-filter]").forEach(button=>button.addEventListener("click",()=>setChatFilter(button.dataset.chatFilter)));
+$("toggleDetailsBtn").addEventListener("click",()=>{$("dashboard").querySelector(".layout").classList.toggle("details-hidden");});
+$("botSwitcher").addEventListener("change",event=>{if(event.target.value)switchBotProfile(event.target.value);});
+$("addBotBtn").addEventListener("click",addBotProfile);
 $("searchInput").addEventListener("input",renderChats);$("refreshBtn").addEventListener("click",async()=>{await refreshAll();await refreshPinnedMessage();});
 $("chatTabBtn").addEventListener("click",()=>setConversationTab("chat"));$("mediaTabBtn").addEventListener("click",()=>setConversationTab("media"));$("cancelReplyBtn").addEventListener("click",()=>setReplyTarget(null));
 $("messages").addEventListener("ended",()=>{if(pendingMessages){const next=pendingMessages;pendingMessages=null;renderMessages(next);}},true);
@@ -1000,7 +1142,7 @@ $("sendForm").addEventListener("submit",async e=>{
    const data=new FormData();data.append("chat_id",activeChatId);data.append("caption",message);data.append("file",file);
    await api("/api/send-media",{method:"POST",body:data});
    playSendSound();
-   $("mediaInput").value="";$("fileStatus").textContent="";$("messageText").value="";
+   $("mediaInput").value="";$("fileChip").hidden=true;$("fileStatus").textContent="";$("messageText").value="";
    await refreshAll();toast(tr("fileSent"));
   }else{
    const optimistic=addOptimisticMessage(message);
@@ -1012,8 +1154,9 @@ $("sendForm").addEventListener("submit",async e=>{
    }catch(sendError){optimistic.bubble.remove();throw sendError;}
   }
  }catch(err){toast(err.message);}
- finally{$("sendBtn").disabled=!activeChatId;$("attachBtn").disabled=!activeChatId;$("voiceBtn").disabled=!activeChatId;$("sendProgress").textContent="";}
+ finally{$("sendBtn").disabled=!activeChatId;$("attachBtn").disabled=!activeChatId;$("emojiBtn").disabled=!activeChatId;$("voiceBtn").disabled=!activeChatId;$("sendProgress").textContent="";}
 });
+(async()=>{loadBotProfiles();loadLocalChatState();
 (async()=>{const cfg=connection();if(cfg.server&&cfg.key){$("serverUrl").value=cfg.server;try{await api("/api/session");showDashboard();applyLanguage(currentLang);await loadChats();return;}catch(_){sessionStorage.removeItem("tg_dashboard_server");sessionStorage.removeItem("tg_dashboard_key");}}showLogin();applyLanguage(currentLang);})();
 </script>
 </body>
