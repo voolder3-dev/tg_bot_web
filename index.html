@@ -645,6 +645,8 @@ async function api(path,options={}){const cfg=connection();if(!cfg.server||!cfg.
 function showLogin(){updatePageTitle();if(voiceRecorder&&voiceRecorder.state!=="inactive"){voiceRecorder.onstop=null;voiceRecorder.stop();}voiceChunks=[];voiceTargetChatId=null;voiceCancelRequested=true;stopVoiceVisualizer();$("voiceRecorderPanel").hidden=true;if(voiceStream)voiceStream.getTracks().forEach(track=>track.stop());voiceStream=null;voiceRecorder=null;$("voiceBtn").disabled=true;$("voiceBtn").classList.remove("recording");$("voiceBtn").textContent="🎙";$("voiceStatus").textContent="";if(refreshTimer)clearInterval(refreshTimer);refreshTimer=null;$("dashboard").hidden=true;$("loginView").hidden=false;$("statusText").textContent=tr("offline");$("statusDot").classList.remove("online");$("messageText").disabled=true;$("sendBtn").disabled=true;$("attachBtn").disabled=true;$("emojiBtn").disabled=true;$("clearChatBtn").disabled=true;}
 function showDashboard(){$("loginView").hidden=true;$("dashboard").hidden=false;updatePageTitle();$("statusText").textContent=tr("connected");$("statusDot").classList.add("online");$("connectedServer").textContent=connection().server;if(refreshTimer)clearInterval(refreshTimer);refreshTimer=setInterval(refreshAll,15000);setTimeout(maybeAskForNotifications,250);}
 function displayName(c){return c.custom_name||c.title||[c.first_name,c.last_name].filter(Boolean).join(" ")||(c.username?"@"+c.username:tr("user"));}
+function mediaPreviewLabel(type){const labels={photo:"📷 Фото",video:"🎬 Видео",animation:"🎞 GIF",sticker:"🧩 Стикер",animated_sticker:"🧩 Анимированный стикер",video_sticker:"🧩 Видеостикер",document:"📎 Файл",audio:"🎵 Аудио",voice:"🎤 Голосовое сообщение",video_note:"🎥 Видеосообщение"};return labels[type]|| (type?"📎 Вложение":"");}
+function cleanMediaCaption(message){let value=String(message.text||"").trim();if(!message.media_type||!value)return value;value=value.replace(/^\[(?:Фото|Видео|GIF|Стикер|Анимированный стикер|Видеостикер|Файл|Аудио|Голосовое сообщение|Видеосообщение|Медиа)\]\s*/i,"").trim();if(message.media_file_name&&value===message.media_file_name)return "";return value;}
 function renderChats(){
  const q=$("searchInput").value.trim().toLowerCase();
  const v=chats.filter(c=>[displayName(c),c.username,c.chat_id,c.last_message].join(" ").toLowerCase().includes(q)).filter(c=>chatFilter==="favorites"?favorites.has(String(c.chat_id)):chatFilter==="unread"?unreadChats.has(String(c.chat_id)):true);
@@ -692,7 +694,7 @@ function renderChats(){
   const avatarInitial=displayName(c).slice(0,1).toUpperCase()||"T";
   if(item._avatar.dataset.loadedFor!==id){item._avatar.dataset.loadedFor=id;item._avatar.textContent=avatarInitial;item._avatar.style.backgroundImage="";loadChatAvatar(id,item._avatar);}
   item._name.textContent=displayName(c);
-  item._preview.textContent=c.last_message||"Нет сообщений";
+  item._preview.textContent=c.last_message||mediaPreviewLabel(c.last_message_media_type)||"Нет сообщений";
   item._id.textContent=tr("id")+c.chat_id;item._favorite.textContent=favorites.has(id)?"★":"☆";item._favorite.classList.toggle("active",favorites.has(id));
   // Reordering reuses the existing DOM node, so its entry animation does not replay.
   list.append(item);
@@ -1027,7 +1029,7 @@ async function renderMessages(ms,{animateNew=true}={}){
    const loading=document.createElement("div");loading.className="media-loading";loading.textContent=currentLang==="ru"?"Медиа загрузится при прокрутке сюда…":"Media will load as you scroll here…";b.append(loading);
    b._mediaLoadTask=()=>loadMessageMedia(m,b,loading);if(mediaObserver)mediaObserver.observe(b);else b._mediaLoadTask();
   }
-  const body=document.createElement("div");body.className=m.media_type?"media-caption":"";body.textContent=m.text||"";
+  const body=document.createElement("div");body.className=m.media_type?"media-caption":"";body.textContent=m.media_type?cleanMediaCaption(m):(m.text||"");
   if(body.textContent)b.append(body);
   const messageKey=chatKey+":"+String(m.id);if(favoriteMessages.has(messageKey)){const star=document.createElement("span");star.className="message-favorite-mark";star.textContent="★";star.title="В избранном";b.append(star);}const reaction=messageReactions[messageKey];if(reaction){const reactionBadge=document.createElement("div");reactionBadge.className="message-reaction";reactionBadge.textContent=reaction;b.append(reactionBadge);}
   b.addEventListener("contextmenu",event=>{event.preventDefault();openMessageMenu(m,event.clientX,event.clientY);});let pointerStart=null;b.addEventListener("pointerdown",event=>{if(event.pointerType!=="touch"||event.button!==0||event.target.closest("button,input,video,a,audio"))return;pointerStart={x:event.clientX,y:event.clientY};try{b.setPointerCapture(event.pointerId);}catch(_){}});b.addEventListener("pointerup",event=>{if(!pointerStart)return;const dx=event.clientX-pointerStart.x,dy=event.clientY-pointerStart.y;pointerStart=null;if(dx>65&&Math.abs(dx)>Math.abs(dy)*1.25){b.classList.add("swipe-reply");setTimeout(()=>b.classList.remove("swipe-reply"),220);setReplyTarget(m);}});b.addEventListener("pointercancel",()=>{pointerStart=null;});
