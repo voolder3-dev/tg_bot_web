@@ -126,7 +126,18 @@ body,body *{transition:background-color .24s ease,border-color .24s ease,color .
 .chat:hover{transform:translateX(2px)}
 .chat .avatar{transition:transform .22s ease,box-shadow .22s ease}
 .chat:hover .avatar{transform:scale(1.06);box-shadow:0 4px 14px color-mix(in srgb,var(--accent2,var(--blue)) 28%,transparent)}
-.bubble.message-enter{animation:messageArrive .32s cubic-bezier(.2,.8,.2,1) both}
+.bubble.message-enter{animation:messageArrive .48s cubic-bezier(.16,1,.3,1) both;transform-origin:var(--message-origin,center)}
+.bubble.incoming.message-enter{--message-origin:left center}
+.bubble.outgoing.message-enter{--message-origin:right center}
+.bubble.incoming.message-enter{animation-name:messageArriveIncoming}
+.bubble.outgoing.message-enter{animation-name:messageArriveOutgoing}
+@keyframes messageArriveIncoming{0%{opacity:0;transform:translate3d(-12px,12px,0) scale(.94);filter:blur(3px)}65%{opacity:1;transform:translate3d(2px,-1px,0) scale(1.015);filter:blur(0)}100%{opacity:1;transform:translate3d(0,0,0) scale(1)}}
+@keyframes messageArriveOutgoing{0%{opacity:0;transform:translate3d(14px,12px,0) scale(.92);filter:blur(3px);box-shadow:0 0 0 transparent}65%{opacity:1;transform:translate3d(-2px,-1px,0) scale(1.025);filter:blur(0);box-shadow:0 0 24px color-mix(in srgb,var(--accent) 22%,transparent)}100%{opacity:1;transform:translate3d(0,0,0) scale(1);box-shadow:0 0 0 transparent}}
+.chat.active .avatar{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent),0 0 20px color-mix(in srgb,var(--accent) 25%,transparent)}
+.btn:active,.attach-btn:active,.voice-record-btn:active,.conversation-tab:active{transform:scale(.96)}
+.btn,.attach-btn,.voice-record-btn,.conversation-tab{transition:transform .16s cubic-bezier(.2,.8,.2,1),filter .2s ease,background-color .2s ease,border-color .2s ease}
+.toast.show{animation:toastPop .28s cubic-bezier(.16,1,.3,1) both}
+@keyframes toastPop{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
 @keyframes messageArrive{from{opacity:0;transform:translateY(9px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
 @media(prefers-reduced-motion:reduce){body,body *,body[data-theme] *{transition:none!important;animation:none!important}}
 
@@ -386,41 +397,38 @@ let voiceAudioContext = null;
 let voiceAnalyser = null;
 let voiceWaveBars = [];
 
-function playToneSequence(notes=[660,880],duration=.28,volume=.022){
- if(!notificationAudio)return;
+function ensureAudio(){
+ const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+ if(!notificationAudio&&AudioContextClass)notificationAudio=new AudioContextClass();
+ if(notificationAudio?.state==="suspended")notificationAudio.resume().catch(()=>{});
+ return notificationAudio;
+}
+function playToneSequence(notes=[660,880],duration=.22,volume=.018,wave="sine"){
+ const ctx=ensureAudio();if(!ctx)return;
  try{
-  const ctx=notificationAudio;if(ctx.state==="suspended")ctx.resume().catch(()=>{});
   const now=ctx.currentTime;
-  notes.forEach((frequency,index)=>{
-   const start=now+index*.095,osc=ctx.createOscillator(),gain=ctx.createGain();
-   osc.type="sine";osc.frequency.setValueAtTime(frequency,start);
-   gain.gain.setValueAtTime(.0001,start);gain.gain.exponentialRampToValueAtTime(volume,start+.025);
-   gain.gain.exponentialRampToValueAtTime(.0001,start+duration);
-   osc.connect(gain);gain.connect(ctx.destination);osc.start(start);osc.stop(start+duration+.01);
+  notes.forEach((note,index)=>{
+   const frequency=typeof note==="number"?note:note.frequency;
+   const offset=typeof note==="number"?index*.085:(note.offset||0);
+   const length=typeof note==="number"?duration:(note.duration||duration);
+   const start=now+offset,osc=ctx.createOscillator(),gain=ctx.createGain(),filter=ctx.createBiquadFilter();
+   osc.type=typeof note==="number"?wave:(note.wave||wave);
+   osc.frequency.setValueAtTime(frequency,start);
+   if(typeof note==="object"&&note.slide)osc.frequency.exponentialRampToValueAtTime(note.slide,start+length*.72);
+   filter.type="lowpass";filter.frequency.setValueAtTime(3600,start);
+   gain.gain.setValueAtTime(.0001,start);
+   gain.gain.exponentialRampToValueAtTime(volume*(note.level||1),start+.018);
+   gain.gain.exponentialRampToValueAtTime(.0001,start+length);
+   osc.connect(filter);filter.connect(gain);gain.connect(ctx.destination);
+   osc.start(start);osc.stop(start+length+.015);
   });
  }catch(error){console.warn("UI sound unavailable:",error);}
 }
-function playSoftNotification(){playToneSequence([587.33,783.99,987.77],.34,.026);}
-function playThemeSound(){playToneSequence([523.25,659.25,783.99],.19,.018);}
-function playHoverSound(){playToneSequence([740],.075,.006);}
-function playChatOpenSound(){playToneSequence([659.25,880],.17,.014);}
-function playSendSound(){
- try{
-  const AudioContextClass=window.AudioContext||window.webkitAudioContext;
-  if(!notificationAudio&&AudioContextClass)notificationAudio=new AudioContextClass();
-  if(!notificationAudio)return;
-  const ctx=notificationAudio;
-  if(ctx.state==="suspended")ctx.resume().catch(()=>{});
-  const now=ctx.currentTime;
-  [[587.33,0],[783.99,.09],[987.77,.18]].forEach(([frequency,offset])=>{
-   const oscillator=ctx.createOscillator(),gain=ctx.createGain(),start=now+offset;
-   oscillator.type="sine";oscillator.frequency.setValueAtTime(frequency,start);
-   gain.gain.setValueAtTime(.0001,start);gain.gain.exponentialRampToValueAtTime(.022,start+.025);
-   gain.gain.exponentialRampToValueAtTime(.0001,start+.19);
-   oscillator.connect(gain);gain.connect(ctx.destination);oscillator.start(start);oscillator.stop(start+.2);
-  });
- }catch(error){console.warn("Send sound unavailable:",error);}
-}
+function playSoftNotification(){playToneSequence([{frequency:659.25,offset:0,duration:.22,wave:"sine"},{frequency:880,offset:.105,duration:.26,wave:"triangle"},{frequency:1174.66,offset:.21,duration:.32,wave:"sine",level:.8}],.25,.019);}
+function playThemeSound(){playToneSequence([{frequency:523.25,offset:0,duration:.13,wave:"triangle"},{frequency:659.25,offset:.075,duration:.15,wave:"sine"},{frequency:783.99,offset:.15,duration:.22,wave:"triangle"}],.18,.014);}
+function playHoverSound(){playToneSequence([{frequency:880,offset:0,duration:.055,wave:"sine",level:.55}],.07,.004);}
+function playChatOpenSound(){playToneSequence([{frequency:587.33,offset:0,duration:.12,wave:"triangle"},{frequency:880,offset:.075,duration:.19,wave:"sine"}],.17,.012);}
+function playSendSound(){playToneSequence([{frequency:659.25,offset:0,duration:.11,wave:"triangle"},{frequency:880,offset:.065,duration:.12,wave:"sine"},{frequency:1318.51,offset:.13,duration:.2,wave:"sine",level:.75}],.18,.016);}
 function notifyIncoming(chat){
  const name=displayName(chat);
  const message=(chat.last_message||"").trim();
