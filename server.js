@@ -600,6 +600,10 @@ app.post("/api/forward-message", requireAdmin, async (req, res) => {
     return res.status(400).json({ ok: false, error: "Выбери другой чат для пересылки." });
   }
   try {
+    const source = await pool.query(
+      "SELECT text, media_file_id, media_type, media_mime_type, media_file_name FROM messages WHERE chat_id=$1 AND telegram_message_id=$2 ORDER BY id DESC LIMIT 1",
+      [sourceChatId, messageId]
+    );
     const sent = await telegram("copyMessage", { chat_id: targetChatId, from_chat_id: sourceChatId, message_id: messageId });
     const chat = await pool.query("SELECT chat_type,title,username,first_name,last_name FROM chats WHERE chat_id=$1", [targetChatId]);
     const info = chat.rows[0] || {};
@@ -608,10 +612,11 @@ app.post("/api/forward-message", requireAdmin, async (req, res) => {
        VALUES ($1,$2,$3,$4,$5,$6,NOW()) ON CONFLICT (chat_id) DO UPDATE SET last_message_at=NOW()`,
       [targetChatId, info.chat_type || "private", info.title || null, info.username || null, info.first_name || null, info.last_name || null]
     );
+    const original = source.rows[0] || {};
     await pool.query(
-      `INSERT INTO messages (chat_id, telegram_message_id, direction, text, sender_name, created_at)
-       VALUES ($1,$2,'outgoing',$3,'Вы',NOW()) ON CONFLICT DO NOTHING`,
-      [targetChatId, sent.message_id, "[Пересланное сообщение]"]
+      `INSERT INTO messages (chat_id, telegram_message_id, direction, text, sender_name, media_file_id, media_type, media_mime_type, media_file_name, created_at)
+       VALUES ($1,$2,'outgoing',$3,'Вы',$4,$5,$6,$7,NOW()) ON CONFLICT DO NOTHING`,
+      [targetChatId, sent.message_id, original.text || "[Пересланное сообщение]", original.media_file_id || null, original.media_type || null, original.media_mime_type || null, original.media_file_name || null]
     );
     res.json({ ok: true, message_id: sent.message_id });
   } catch (error) {
