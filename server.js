@@ -267,7 +267,7 @@ app.get("/api/chats", requireAdmin, async (_req, res) => {
 app.patch("/api/chats/:chatId/name", requireAdmin, async (req, res) => {
   const chatId = req.params.chatId;
   const customName = typeof req.body?.custom_name === "string" ? req.body.custom_name.trim() : "";
-  if (!/^-?\\d+$/.test(chatId)) return res.status(400).json({ ok: false, error: "Некорректный Chat ID." });
+  if (!/^-?\d+$/.test(chatId)) return res.status(400).json({ ok: false, error: "Некорректный Chat ID." });
   if (customName.length > 64) return res.status(400).json({ ok: false, error: "Имя должно содержать не более 64 символов." });
   try {
     const result = await pool.query("UPDATE chats SET custom_name = $2 WHERE chat_id = $1 RETURNING chat_id::text AS chat_id, custom_name", [chatId, customName || null]);
