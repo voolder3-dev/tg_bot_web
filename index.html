@@ -313,72 +313,110 @@ body[data-mode="light"][data-theme] .theme-picker select{color:var(--text);backg
 .message-reaction{display:inline-flex;align-items:center;margin-top:6px;padding:3px 8px;border:1px solid color-mix(in srgb,var(--purple) 35%,var(--border));border-radius:12px;background:color-mix(in srgb,var(--purple) 12%,var(--panel));font-size:13px}
 .reaction-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.reaction-grid button{border:1px solid var(--border);border-radius:11px;background:var(--field);padding:12px 4px;font-size:22px;cursor:pointer}.reaction-grid button:hover{border-color:var(--purple);transform:scale(1.06)}
 
-/* Optimized Liquid Glass: selectable surface treatments */
+/* Liquid Glass 2.0 — surface-only styling.
+   No blur, transforms, or sizing rules on layout and scrolling containers. */
 .glass-picker{display:flex;align-items:center;gap:6px;padding:0 5px 0 8px;border-left:1px solid var(--border);color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.5px}
 .glass-picker select{max-width:112px;border:1px solid var(--border);border-radius:8px;padding:7px 22px 7px 8px;background:var(--field);color:var(--text);font:600 10px Inter,system-ui,sans-serif;outline:none;cursor:pointer}
 .glass-picker select:focus{border-color:var(--purple)}
-/* Keep the conversation layout stable: glass blur on nested scrolling flex panels can clip/collapse the message area in some browsers. */
-body[data-glass="glossy"] .conversation{
-  display:flex;flex-direction:column;
-  height:min(780px,calc(100vh - 150px));min-height:620px;
-  -webkit-backdrop-filter:none;backdrop-filter:none;
+
+/* Glossy: reflective surfaces only; the main panels keep their native layout. */
+body[data-glass="glossy"] .conversation-head,
+body[data-glass="glossy"] .panel-head,
+body[data-glass="glossy"] .composer,
+body[data-glass="glossy"] .preferences-switch,
+body[data-glass="glossy"] .open-chat-tabs,
+body[data-glass="glossy"] .bubble,
+body[data-glass="glossy"] .voice-player,
+body[data-glass="glossy"] .voice-recorder-panel,
+body[data-glass="glossy"] .file-chip,
+body[data-glass="glossy"] .conversation-tab{
+  background-image:linear-gradient(145deg,#ffffff25 0%,#ffffff09 28%,transparent 55%,#ffffff12 100%);
+  border-color:color-mix(in srgb,#fff 28%,var(--border));
+  box-shadow:inset 0 1px 0 #ffffff50,inset 1px 0 0 #ffffff18,0 7px 22px #00000018;
 }
-body[data-glass="glossy"] .conversation-head{flex:0 0 auto}
-body[data-glass="glossy"] .conversation-body{display:flex;flex:1 1 auto;min-height:0;overflow:hidden}
-body[data-glass="glossy"] .conversation-body .messages,
-body[data-glass="glossy"] .conversation-body .media-gallery{
-  flex:1 1 0;width:auto;min-width:0;min-height:0;height:auto;max-height:none;overflow:auto;
+body[data-glass="glossy"] .preferences-switch,
+body[data-glass="glossy"] .open-chat-tabs,
+body[data-glass="glossy"] .voice-player,
+body[data-glass="glossy"] .voice-recorder-panel{
+  -webkit-backdrop-filter:blur(16px) saturate(1.55);
+  backdrop-filter:blur(16px) saturate(1.55);
 }
-body[data-glass="glossy"] .conversation-body .messages{overscroll-behavior:contain}
-body[data-glass="glossy"] .conversation .composer{flex:0 0 auto}
-body[data-glass="glossy"] .conversation .bubble{
-  -webkit-backdrop-filter:none;backdrop-filter:none;
-  position:relative;flex:0 0 auto;max-width:min(78%,560px);
+body[data-glass="glossy"] .conversation-head,
+body[data-glass="glossy"] .panel-head,
+body[data-glass="glossy"] .composer{background-color:color-mix(in srgb,var(--panel) 82%,transparent)}
+body[data-glass="glossy"] .bubble{
+  position:relative;
+  background-color:color-mix(in srgb,var(--panel) 78%,transparent);
+  border-radius:16px;
+}
+body[data-glass="glossy"] .bubble.outgoing{
+  background-image:linear-gradient(145deg,color-mix(in srgb,var(--purple) 48%,transparent),color-mix(in srgb,var(--purple) 22%,var(--panel)) 58%,#ffffff12)!important;
+  border-color:color-mix(in srgb,var(--purple) 55%,#ffffff55)!important;
+  box-shadow:inset 0 1px 0 #ffffff60,0 8px 24px #00000020!important;
+}
+body[data-glass="glossy"] .conversation-tab.active{
+  background-image:linear-gradient(120deg,#ffffff30,color-mix(in srgb,var(--purple) 32%,transparent),#ffffff12);
+  border-color:#ffffff55;
+  box-shadow:inset 0 1px 0 #ffffff55,0 5px 18px #00000020;
+}
+body[data-glass="glossy"] .preferences-switch{
+  border:1px solid #ffffff45;
+  box-shadow:inset 0 1px 0 #ffffff65,0 12px 34px #00000035;
 }
 
-/* iOS-inspired glossy glass: brighter specular edges, layered reflections and deeper translucency */
-body[data-glass="glossy"] .panel,body[data-glass="glossy"] .setup,body[data-glass="glossy"] .login-card,body[data-glass="glossy"] .preferences-switch,body[data-glass="glossy"] .open-chat-tabs,body[data-glass="glossy"] .bubble,body[data-glass="glossy"] .voice-player,body[data-glass="glossy"] .voice-recorder-panel{
- background:linear-gradient(145deg,color-mix(in srgb,var(--panel) 48%,transparent),color-mix(in srgb,var(--panel) 68%,transparent) 48%,color-mix(in srgb,var(--panel) 42%,transparent))!important;
- -webkit-backdrop-filter:blur(25px) saturate(1.85) contrast(1.06);backdrop-filter:blur(25px) saturate(1.85) contrast(1.06);
- border-color:color-mix(in srgb,#fff 26%,var(--border))!important;
- box-shadow:0 16px 42px #0003,inset 0 1.5px 0 #ffffff55,inset 1px 0 0 #ffffff20,inset 0 -1px 0 #ffffff16!important;
+/* Matte: softer and more opaque, without glossy reflections. */
+body[data-glass="matte"] .conversation-head,
+body[data-glass="matte"] .panel-head,
+body[data-glass="matte"] .composer,
+body[data-glass="matte"] .preferences-switch,
+body[data-glass="matte"] .open-chat-tabs,
+body[data-glass="matte"] .bubble,
+body[data-glass="matte"] .voice-player,
+body[data-glass="matte"] .voice-recorder-panel,
+body[data-glass="matte"] .file-chip,
+body[data-glass="matte"] .conversation-tab{
+  background-color:color-mix(in srgb,var(--panel) 94%,var(--bg));
+  background-image:none;border-color:var(--border);box-shadow:0 3px 12px #00000012;
 }
-/* Glass must not create a separate compositing layer on the main scrolling conversation panel.
-   Keep the dashboard's responsive height rules and let the message area consume remaining space. */
-body[data-glass="glossy"] #dashboard .conversation{
-  -webkit-backdrop-filter:none!important;backdrop-filter:none!important;
-  height:100%;min-height:0;display:flex;flex-direction:column;align-self:stretch;
+body[data-glass="matte"] .preferences-switch,
+body[data-glass="matte"] .open-chat-tabs,
+body[data-glass="matte"] .voice-player,
+body[data-glass="matte"] .voice-recorder-panel{
+  -webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);
 }
-body[data-glass="glossy"] #dashboard .conversation-head,
-body[data-glass="glossy"] #dashboard .conversation .open-chat-tabs,
-body[data-glass="glossy"] #dashboard .conversation .composer{flex:0 0 auto}
-body[data-glass="glossy"] #dashboard .conversation-body{
-  display:flex;flex:1 1 0;min-height:0;height:auto;overflow:hidden;
-}
-body[data-glass="glossy"] #dashboard .conversation-body .messages,
-body[data-glass="glossy"] #dashboard .conversation-body .media-gallery{
-  flex:1 1 0;min-height:0;height:auto;max-height:none;overflow:auto;
+body[data-glass="matte"] .bubble.outgoing{
+  background-color:color-mix(in srgb,var(--purple) 16%,var(--panel));
+  border-color:color-mix(in srgb,var(--purple) 32%,var(--border));
 }
 
-body[data-glass="glossy"] .panel{position:relative;isolation:isolate}
-body[data-glass="glossy"] .panel::before,body[data-glass="glossy"] .setup::before,body[data-glass="glossy"] .login-card::before{
- content:"";position:absolute;inset:0;z-index:0;pointer-events:none;border-radius:inherit;
- background:radial-gradient(ellipse at 8% 0%,#ffffff35,transparent 38%),linear-gradient(128deg,#ffffff22 0%,transparent 24%,transparent 62%,#ffffff0d 100%);
+/* Off: solid surfaces, no glass filters. */
+body[data-glass="off"] .conversation-head,
+body[data-glass="off"] .panel-head,
+body[data-glass="off"] .composer,
+body[data-glass="off"] .preferences-switch,
+body[data-glass="off"] .open-chat-tabs,
+body[data-glass="off"] .bubble,
+body[data-glass="off"] .voice-player,
+body[data-glass="off"] .voice-recorder-panel,
+body[data-glass="off"] .file-chip,
+body[data-glass="off"] .conversation-tab{
+  -webkit-backdrop-filter:none;backdrop-filter:none;background-image:none;box-shadow:none;
 }
-body[data-glass="glossy"] .panel>*,body[data-glass="glossy"] .setup>*,body[data-glass="glossy"] .login-card>*{position:relative;z-index:1}
-body[data-glass="glossy"] .panel-head,body[data-glass="glossy"] .conversation-head{background:linear-gradient(115deg,#ffffff24,transparent 58%),color-mix(in srgb,var(--panel) 42%,transparent);border-bottom-color:#ffffff26}
-body[data-glass="glossy"] .bubble{border-radius:16px;overflow:hidden}
-body[data-glass="glossy"] .bubble::before{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:linear-gradient(145deg,#ffffff24 0%,#ffffff08 22%,transparent 48%,#ffffff09 100%);box-shadow:inset 0 1px 0 #ffffff45,inset 1px 0 0 #ffffff18}
-body[data-glass="glossy"] .bubble.outgoing{background:linear-gradient(145deg,color-mix(in srgb,var(--purple) 52%,transparent),color-mix(in srgb,var(--panel) 38%,var(--purple) 62%))!important;border-color:#d5c2ff66!important;box-shadow:0 10px 28px #24104455,inset 0 1px 0 #ffffff55,inset 0 -1px 0 #ffffff16!important}
-body[data-glass="glossy"] .open-chat-tabs{border-bottom-color:#ffffff28}
-body[data-glass="glossy"] .preferences-switch{border:1px solid #ffffff30}
-body[data-glass="matte"] .panel,body[data-glass="matte"] .setup,body[data-glass="matte"] .login-card,body[data-glass="matte"] .preferences-switch,body[data-glass="matte"] .open-chat-tabs,body[data-glass="matte"] .bubble,body[data-glass="matte"] .voice-player,body[data-glass="matte"] .voice-recorder-panel{background-color:color-mix(in srgb,var(--panel) 90%,transparent);-webkit-backdrop-filter:blur(7px) saturate(1.02);backdrop-filter:blur(7px) saturate(1.02);border-color:var(--border);box-shadow:0 6px 18px #00000014}
-body[data-glass="matte"] .bubble::before{display:none}
-body[data-glass="off"] .panel,body[data-glass="off"] .setup,body[data-glass="off"] .login-card,body[data-glass="off"] .preferences-switch,body[data-glass="off"] .open-chat-tabs,body[data-glass="off"] .bubble,body[data-glass="off"] .voice-player,body[data-glass="off"] .voice-recorder-panel{-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none}
-body[data-glass="off"] .panel,body[data-glass="off"] .setup,body[data-glass="off"] .login-card{background:var(--panel)}
-@media(prefers-reduced-transparency:reduce){body[data-glass="glossy"] .panel,body[data-glass="glossy"] .setup,body[data-glass="glossy"] .login-card,body[data-glass="glossy"] .bubble{-webkit-backdrop-filter:none;backdrop-filter:none;background-color:var(--panel)!important}}
-@media(prefers-reduced-motion:reduce){.media-glass-placeholder,.media-glass-placeholder::after{animation:none!important}.message-media.media-image-appear{transition:none!important;filter:none!important;transform:none!important;opacity:1!important}}
-
+body[data-glass="off"] .preferences-switch,
+body[data-glass="off"] .open-chat-tabs,
+body[data-glass="off"] .bubble,
+body[data-glass="off"] .voice-player,
+body[data-glass="off"] .voice-recorder-panel{background-color:var(--panel)}
+@media(prefers-reduced-transparency:reduce){
+  body[data-glass="glossy"] .preferences-switch,
+  body[data-glass="glossy"] .open-chat-tabs,
+  body[data-glass="glossy"] .voice-player,
+  body[data-glass="glossy"] .voice-recorder-panel{-webkit-backdrop-filter:none;backdrop-filter:none}
+}
+@media(prefers-reduced-motion:reduce){
+  .media-glass-placeholder,.media-glass-placeholder::after{animation:none!important}
+  .message-media.media-image-appear{transition:none!important;filter:none!important;transform:none!important;opacity:1!important}
+}
 </style>
 </head>
 <body>
