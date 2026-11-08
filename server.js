@@ -144,6 +144,7 @@ async function initDatabase() {
       chat_id BIGINT PRIMARY KEY,
       chat_type TEXT NOT NULL DEFAULT 'private',
       title TEXT,
+      custom_name TEXT,
       username TEXT,
       first_name TEXT,
       last_name TEXT,
@@ -165,6 +166,7 @@ async function initDatabase() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    ALTER TABLE chats ADD COLUMN IF NOT EXISTS custom_name TEXT;
     ALTER TABLE messages ADD COLUMN IF NOT EXISTS media_file_id TEXT;
     ALTER TABLE messages ADD COLUMN IF NOT EXISTS media_type TEXT;
     ALTER TABLE messages ADD COLUMN IF NOT EXISTS media_mime_type TEXT;
@@ -245,7 +247,7 @@ app.post("/telegram/webhook", async (req, res) => {
 app.get("/api/chats", requireAdmin, async (_req, res) => {
   try {
     const result = await pool.query(
-      `SELECT c.chat_id::text AS chat_id, c.chat_type, c.title, c.username,
+      `SELECT c.chat_id::text AS chat_id, c.chat_type, c.title, c.custom_name, c.username,
               c.first_name, c.last_name, c.last_message_at,
               m.text AS last_message, m.id::text AS last_message_id, m.direction AS last_message_direction
        FROM chats c
@@ -259,6 +261,21 @@ app.get("/api/chats", requireAdmin, async (_req, res) => {
   } catch (error) {
     console.error("Chats query failed:", error.message);
     res.status(500).json({ ok: false, error: "Не удалось загрузить список чатов." });
+  }
+});
+
+app.patch("/api/chats/:chatId/name", requireAdmin, async (req, res) => {
+  const chatId = req.params.chatId;
+  const customName = typeof req.body?.custom_name === "string" ? req.body.custom_name.trim() : "";
+  if (!/^-?\\d+$/.test(chatId)) return res.status(400).json({ ok: false, error: "Некорректный Chat ID." });
+  if (customName.length > 64) return res.status(400).json({ ok: false, error: "Имя должно содержать не более 64 символов." });
+  try {
+    const result = await pool.query("UPDATE chats SET custom_name = $2 WHERE chat_id = $1 RETURNING chat_id::text AS chat_id, custom_name", [chatId, customName || null]);
+    if (!result.rows.length) return res.status(404).json({ ok: false, error: "Чат не найден." });
+    res.json({ ok: true, chat: result.rows[0] });
+  } catch (error) {
+    console.error("Chat display name update failed:", error.message);
+    res.status(500).json({ ok: false, error: "Не удалось сохранить имя пользователя." });
   }
 });
 
