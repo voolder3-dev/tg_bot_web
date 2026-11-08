@@ -436,7 +436,7 @@ app.post("/api/send", requireAdmin, async (req, res) => {
   const chatId = String(req.body?.chat_id || "");
   const messageText = typeof req.body?.text === "string" ? req.body.text.trim() : "";
   const replyTo = req.body?.reply_to_message_id ? Number(req.body.reply_to_message_id) : null;
-  if (!/^-?\d+$/.test(chatId) || !messageText || messageText.length > 4096) {
+  if (!/^-?\d+$/.test(chatId) || !messageText || messageText.length > 4096 || (replyTo !== null && (!Number.isSafeInteger(replyTo) || replyTo < 1))) {
     return res.status(400).json({ ok: false, error: "Проверь Chat ID и текст (до 4096 символов)." });
   }
 
@@ -469,7 +469,7 @@ app.post("/api/send", requireAdmin, async (req, res) => {
 app.post("/api/pin-message", requireAdmin, async (req, res) => {
   const chatId = String(req.body?.chat_id || "");
   const messageId = Number(req.body?.message_id);
-  if (!/^-?\\d+$/.test(chatId) || !Number.isSafeInteger(messageId) || messageId < 1) return res.status(400).json({ ok: false, error: "Проверь Chat ID и ID сообщения." });
+  if (!/^-?\d+$/.test(chatId) || !Number.isSafeInteger(messageId) || messageId < 1) return res.status(400).json({ ok: false, error: "Проверь Chat ID и ID сообщения." });
   try {
     const result = await telegram("pinChatMessage", { chat_id: chatId, message_id: messageId, disable_notification: true });
     res.json({ ok: true, result });
