@@ -492,7 +492,7 @@ function checkForNewMessages(nextChats){
   if(chat.last_message_direction==="incoming"&&messageId&&previous!==messageId){
    notifyIncoming(chat);
    if(previous!==undefined){
-    chatsWithFreshMessages.add(id);unreadChats.add(id);saveLocalChatState();
+    chatsWithFreshMessages.add(id);if(id!==String(activeChatId)){unreadChats.add(id);saveLocalChatState();}
     // Сохраняем перемещение чата вниз между фоновыми обновлениями.
     chatsMovedToBottom.delete(id);
     chatsMovedToBottom.add(id);
@@ -567,7 +567,7 @@ async function switchBotProfile(server){
   if(!response.ok||!data.ok)throw new Error(data.error||"Не удалось подключиться к боту.");
   localStorage.setItem("tg_dashboard_server",bot.server);localStorage.setItem("tg_dashboard_key",bot.key);loadLocalChatState();
   chats=[];activeChatId=null;currentMessages=[];chatElements.clear();$("chatList").replaceChildren();$("messages").replaceChildren();showDashboard();$("activeName").textContent=tr("chooseChat");$("activeId").textContent=tr("conversationHere");$("messages").replaceChildren();
-  $("connectedServer").textContent=bot.server;await loadChats();updateDetailsPanel();toast(currentLang==="ru"?"Подключено: "+bot.name:"Connected: "+bot.name);
+  $("connectedServer").textContent=bot.server;await loadChats();updateDetailsPanel();try{await api("/api/webhook/register",{method:"POST",body:"{}"});}catch(error){toast((currentLang==="ru"?"Webhook не обновлён: ":"Webhook not updated: ")+error.message);}toast(currentLang==="ru"?"Подключено: "+bot.name:"Connected: "+bot.name);
  }catch(error){toast(error.message);renderBotProfiles();}
 }
 async function addBotProfile(){
