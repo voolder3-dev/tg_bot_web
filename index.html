@@ -343,6 +343,23 @@ body[data-glass="glossy"] .panel,body[data-glass="glossy"] .setup,body[data-glas
  border-color:color-mix(in srgb,#fff 26%,var(--border))!important;
  box-shadow:0 16px 42px #0003,inset 0 1.5px 0 #ffffff55,inset 1px 0 0 #ffffff20,inset 0 -1px 0 #ffffff16!important;
 }
+/* Glass must not create a separate compositing layer on the main scrolling conversation panel.
+   Keep the dashboard's responsive height rules and let the message area consume remaining space. */
+body[data-glass="glossy"] #dashboard .conversation{
+  -webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+  height:100%;min-height:0;display:flex;flex-direction:column;align-self:stretch;
+}
+body[data-glass="glossy"] #dashboard .conversation-head,
+body[data-glass="glossy"] #dashboard .conversation .open-chat-tabs,
+body[data-glass="glossy"] #dashboard .conversation .composer{flex:0 0 auto}
+body[data-glass="glossy"] #dashboard .conversation-body{
+  display:flex;flex:1 1 0;min-height:0;height:auto;overflow:hidden;
+}
+body[data-glass="glossy"] #dashboard .conversation-body .messages,
+body[data-glass="glossy"] #dashboard .conversation-body .media-gallery{
+  flex:1 1 0;min-height:0;height:auto;max-height:none;overflow:auto;
+}
+
 body[data-glass="glossy"] .panel{position:relative;isolation:isolate}
 body[data-glass="glossy"] .panel::before,body[data-glass="glossy"] .setup::before,body[data-glass="glossy"] .login-card::before{
  content:"";position:absolute;inset:0;z-index:0;pointer-events:none;border-radius:inherit;
