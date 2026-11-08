@@ -1,6 +1,8 @@
 const crypto = require("node:crypto");
 const express = require("express");
 const multer = require("multer");
+const ffmpegPath = require("ffmpeg-static");
+const { spawn } = require("node:child_process");
 const { Pool } = require("pg");
 
 const app = express();
@@ -109,6 +111,31 @@ function extractMedia(message) {
     }
   }
   return null;
+}
+
+
+function convertVoiceToOgg(buffer) {
+  return new Promise((resolve, reject) => {
+    if (!ffmpegPath) return reject(new Error("Конвертер аудио недоступен на сервере."));
+    const process = spawn(ffmpegPath, [
+      "-hide_banner", "-loglevel", "error", "-i", "pipe:0",
+      "-vn", "-ac", "1", "-ar", "48000", "-c:a", "libopus",
+      "-b:a", "32k", "-f", "ogg", "pipe:1"
+    ]);
+    const output = [];
+    let errorOutput = "";
+    process.stdout.on("data", chunk => output.push(chunk));
+    process.stderr.on("data", chunk => { errorOutput += chunk.toString(); });
+    process.on("error", reject);
+    process.on("close", code => {
+      if (code !== 0) return reject(new Error(errorOutput.trim() || "Не удалось обработать запись с микрофона."));
+      const result = Buffer.concat(output);
+      if (!result.length) return reject(new Error("Запись получилась пустой."));
+      resolve(result);
+    });
+    process.stdin.on("error", () => {});
+    process.stdin.end(buffer);
+  });
 }
 
 async function initDatabase() {
@@ -351,6 +378,56 @@ app.post("/api/send-media", requireAdmin, upload.single("file"), async (req, res
     res.json({ ok: true, message_id: sent.message_id, media_type: method });
   } catch (error) {
     res.status(502).json({ ok: false, error: error.message || "Не удалось отправить файл." });
+  }
+});
+
+
+app.post("/api/send-voice", requireAdmin, upload.single("voice"), async (req, res) => {
+  const chatId = String(req.body?.chat_id || "");
+  const file = req.file;
+  if (!/^-?\\d+$/.test(chatId) || !file) {
+    return res.status(400).json({ ok: false, error: "Запиши голосовое сообщение и выбери чат." });
+  }
+  if (!file.mimetype.startsWith("audio/")) {
+    return res.status(400).json({ ok: false, error: "Файл записи должен быть аудио." });
+  }
+  if (file.size > 20 * 1024 * 1024) {
+    return res.status(400).json({ ok: false, error: "Голосовое сообщение не должно превышать 20 МБ." });
+  }
+
+  try {
+    const oggVoice = await convertVoiceToOgg(file.buffer);
+    const form = new FormData();
+    form.append("chat_id", chatId);
+    form.append("voice", new Blob([oggVoice], { type: "audio/ogg" }), "voice.ogg");
+    const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVoice`, {
+      method: "POST",
+      body: form
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.ok !== true) {
+      throw new Error(data.description || "Telegram не смог отправить голосовое сообщение.");
+    }
+
+    const sent = data.result;
+    const chat = sent.chat;
+    await pool.query(
+      `INSERT INTO chats (chat_id, chat_type, title, username, first_name, last_name, last_message_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())
+       ON CONFLICT (chat_id) DO UPDATE SET last_message_at = NOW()`,
+      [String(chat.id), chat.type || "private", chat.title || null, chat.username || null, chat.first_name || null, chat.last_name || null]
+    );
+    await pool.query(
+      `INSERT INTO messages
+       (chat_id, telegram_message_id, direction, text, sender_name, media_file_id, media_type, media_mime_type, media_file_name, created_at)
+       VALUES ($1, $2, 'outgoing', $3, 'Вы', $4, 'voice', 'audio/ogg', 'voice.ogg', NOW())
+       ON CONFLICT DO NOTHING`,
+      [String(chat.id), sent.message_id, "[Голосовое сообщение]", sent.voice?.file_id || null]
+    );
+    res.json({ ok: true, message_id: sent.message_id, media_type: "voice" });
+  } catch (error) {
+    console.error("Voice send failed:", error.message);
+    res.status(502).json({ ok: false, error: error.message || "Не удалось отправить голосовое сообщение." });
   }
 });
 
