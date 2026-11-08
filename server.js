@@ -645,7 +645,7 @@ app.post("/api/sticker-packs/import", requireAdmin, async (req, res) => {
 });
 
 app.get("/api/sticker-packs/:packId/stickers", requireAdmin, async (req, res) => {
-  if (!/^\\d+$/.test(req.params.packId)) return res.status(400).json({ ok: false, error: "Некорректный ID набора." });
+  if (!/^\d+$/.test(req.params.packId)) return res.status(400).json({ ok: false, error: "Некорректный ID набора." });
   try {
     const pack = await pool.query("SELECT id::text, set_name, title, sticker_count FROM sticker_packs WHERE id = $1", [req.params.packId]);
     if (!pack.rows.length) return res.status(404).json({ ok: false, error: "Набор не найден." });
@@ -661,7 +661,7 @@ app.get("/api/sticker-packs/:packId/stickers", requireAdmin, async (req, res) =>
 });
 
 app.get("/api/sticker-library/media/:itemId", requireAdmin, async (req, res) => {
-  if (!/^\\d+$/.test(req.params.itemId)) return res.status(400).json({ ok: false, error: "Некорректный ID стикера." });
+  if (!/^\d+$/.test(req.params.itemId)) return res.status(400).json({ ok: false, error: "Некорректный ID стикера." });
   try {
     const result = await pool.query("SELECT COALESCE(preview_file_id, file_id) AS file_id, COALESCE(preview_mime_type, mime_type) AS mime_type FROM sticker_pack_items WHERE id = $1", [req.params.itemId]);
     if (!result.rows.length) return res.status(404).json({ ok: false, error: "Превью стикера не найдено." });
@@ -670,7 +670,7 @@ app.get("/api/sticker-library/media/:itemId", requireAdmin, async (req, res) => 
     if (!response.ok) throw new Error("Telegram file HTTP " + response.status);
     const buffer = Buffer.from(await response.arrayBuffer());
     if (!buffer.length) throw new Error("Telegram вернул пустое превью.");
-    const previewMime = /\\.(?:webp)$/i.test(fileInfo.file_path) ? "image/webp" : /\\.(?:jpe?g)$/i.test(fileInfo.file_path) ? "image/jpeg" : result.rows[0].mime_type;
+    const previewMime = /\.(?:webp)$/i.test(fileInfo.file_path) ? "image/webp" : /\.(?:jpe?g)$/i.test(fileInfo.file_path) ? "image/jpeg" : result.rows[0].mime_type;
     res.setHeader("Content-Type", previewMime);
     res.setHeader("Cache-Control", "private, max-age=3600");
     res.end(buffer);
