@@ -608,9 +608,6 @@ app.patch("/api/chats/:chatId/messages/:messageId", requireAdmin, async (req, re
     if (message.direction !== "outgoing" || message.media_type || !message.telegram_message_id) {
       return res.status(400).json({ ok: false, error: "Можно редактировать только отправленные текстовые сообщения." });
     }
-    if (Date.now() - new Date(message.created_at).getTime() > 48 * 60 * 60 * 1000) {
-      return res.status(400).json({ ok: false, error: "Telegram разрешает редактировать это сообщение только в течение 48 часов." });
-    }
     await telegram("editMessageText", { chat_id: chatId, message_id: Number(message.telegram_message_id), text: textValue });
     await pool.query("UPDATE messages SET text = $3 WHERE id = $1 AND chat_id = $2", [localId, chatId, textValue]);
     res.json({ ok: true });
