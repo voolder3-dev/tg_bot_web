@@ -548,7 +548,7 @@ app.get("/api/stickers", requireAdmin, async (_req, res) => {
     const result = await pool.query(
       `SELECT DISTINCT ON (COALESCE(sticker_file_id, media_file_id)) id::text AS id, media_file_id,
          COALESCE(sticker_file_id, media_file_id) AS sticker_file_id, media_type, text, created_at
-       FROM messages WHERE media_type IN ('sticker','video_sticker') AND media_file_id IS NOT NULL
+       FROM messages WHERE media_type IN ('sticker','video_sticker','animated_sticker') AND media_file_id IS NOT NULL
        ORDER BY COALESCE(sticker_file_id, media_file_id), created_at DESC LIMIT 60`
     );
     res.json({ ok: true, stickers: result.rows });
