@@ -601,7 +601,7 @@ app.get("/api/sticker-packs", requireAdmin, async (_req, res) => {
               i.id::text AS cover_id, i.media_type AS cover_type, i.preview_mime_type AS cover_preview_mime_type
        FROM sticker_packs p
        LEFT JOIN LATERAL (
-         SELECT id, media_type FROM sticker_pack_items
+         SELECT id, media_type, preview_mime_type FROM sticker_pack_items
          WHERE pack_id = p.id ORDER BY position ASC LIMIT 1
        ) i ON TRUE
        ORDER BY p.created_at DESC`
