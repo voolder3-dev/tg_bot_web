@@ -270,7 +270,7 @@ app.get("/api/chats/:chatId/messages", requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT id, telegram_message_id, direction, text, sender_name,
-              media_type, media_mime_type, media_file_name, created_at
+              media_type, media_mime_type, media_file_name, reply_to_message_id, created_at
        FROM messages WHERE chat_id = $1
        ORDER BY created_at ASC, id ASC LIMIT 500`,
       [chatId]
