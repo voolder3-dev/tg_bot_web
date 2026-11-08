@@ -704,7 +704,7 @@ app.post("/api/react-message", requireAdmin, async (req, res) => {
   const chatId = String(req.body?.chat_id || "");
   const messageId = Number(req.body?.message_id);
   const emoji = typeof req.body?.emoji === "string" ? req.body.emoji : "";
-  const allowed = ["👍","👎","❤","🔥","🎉","😁","😢","🤔","👏","💯"];
+  const allowed = ["👍","👎","❤","🔥","🎉","😁","😢","🤔","👏","💯","🥰","😍","🤩","😎","🤗","🫡","🤝","🙏","💔","🏆"];
   const remove = req.body?.remove === true;
   if (!/^-?\d+$/.test(chatId) || !Number.isSafeInteger(messageId) || messageId < 1 || (!remove && !allowed.includes(emoji))) {
     return res.status(400).json({ ok: false, error: "Проверь сообщение и выбранную реакцию." });
