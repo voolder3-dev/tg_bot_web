@@ -263,19 +263,35 @@ app.post("/telegram/webhook", async (req, res) => {
       ]
     );
 
-    await pool.query(
-      `INSERT INTO messages
-       (chat_id, telegram_message_id, direction, text, sender_name, media_file_id, media_type, media_mime_type, media_file_name, sticker_file_id, reply_to_message_id, created_at)
-       VALUES ($1, $2, 'incoming', $3, $4, $5, $6, $7, $8, $9, $10, to_timestamp($11))
-       ON CONFLICT DO NOTHING`,
-      [
-        String(chat.id), message.message_id || null, String(textValue).slice(0, 4096),
-        [from.first_name, from.last_name].filter(Boolean).join(" ") || from.username || null,
-        media?.fileId || null, media?.type || null, media?.mime || null, media?.name || null, media?.stickerFileId || null,
-        message.reply_to_message?.message_id || null,
-        Number(message.date) || Math.floor(Date.now() / 1000)
-      ]
-    );
+    const messageValues = [
+      String(chat.id), message.message_id || null, String(textValue).slice(0, 4096),
+      [from.first_name, from.last_name].filter(Boolean).join(" ") || from.username || null,
+      media?.fileId || null, media?.type || null, media?.mime || null, media?.name || null, media?.stickerFileId || null,
+      message.reply_to_message?.message_id || null,
+      Number(message.date) || Math.floor(Date.now() / 1000)
+    ];
+    let editedExisting = false;
+    if (update.edited_message) {
+      const edited = await pool.query(
+        `UPDATE messages
+         SET text = $3, sender_name = $4, media_file_id = $5, media_type = $6,
+             media_mime_type = $7, media_file_name = $8, sticker_file_id = $9,
+             reply_to_message_id = $10, created_at = to_timestamp($11)
+         WHERE chat_id = $1 AND telegram_message_id = $2 AND direction = 'incoming'
+         RETURNING id`,
+        messageValues
+      );
+      editedExisting = edited.rowCount > 0;
+    }
+    if (!editedExisting) {
+      await pool.query(
+        `INSERT INTO messages
+         (chat_id, telegram_message_id, direction, text, sender_name, media_file_id, media_type, media_mime_type, media_file_name, sticker_file_id, reply_to_message_id, created_at)
+         VALUES ($1, $2, 'incoming', $3, $4, $5, $6, $7, $8, $9, $10, to_timestamp($11))
+         ON CONFLICT DO NOTHING`,
+        messageValues
+      );
+    }
 
     res.sendStatus(200);
   } catch (error) {
@@ -306,7 +322,7 @@ app.get("/api/chats", requireAdmin, async (_req, res) => {
 
 app.get("/api/chats/:chatId/avatar", requireAdmin, async (req, res) => {
   const chatId = req.params.chatId;
-  if (!/^-?\\d+$/.test(chatId)) return res.status(400).json({ ok: false, error: "Некорректный Chat ID." });
+  if (!/^-?\d+$/.test(chatId)) return res.status(400).json({ ok: false, error: "Некорректный Chat ID." });
   try {
     const chat = await telegram("getChat", { chat_id: chatId });
     const fileId = chat.photo?.small_file_id || chat.photo?.big_file_id;
@@ -351,8 +367,13 @@ app.get("/api/chats/:chatId/messages", requireAdmin, async (req, res) => {
     const result = await pool.query(
       `SELECT id, telegram_message_id, direction, text, sender_name,
               media_type, media_mime_type, media_file_name, reply_to_message_id, created_at
-       FROM messages WHERE chat_id = $1
-       ORDER BY created_at ASC, id ASC LIMIT 500`,
+       FROM (
+         SELECT id, telegram_message_id, direction, text, sender_name,
+                media_type, media_mime_type, media_file_name, reply_to_message_id, created_at
+         FROM messages WHERE chat_id = $1
+         ORDER BY created_at DESC, id DESC LIMIT 500
+       ) latest
+       ORDER BY created_at ASC, id ASC`,
       [chatId]
     );
     res.json({ ok: true, messages: result.rows });
