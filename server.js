@@ -9,6 +9,22 @@ const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
 
+// API responses contain private chats, messages and media: never let shared caches retain them.
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  if (req.secure || req.get("x-forwarded-proto") === "https") {
+    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  }
+  if (req.path.startsWith("/api/") || req.path === "/telegram/webhook") {
+    res.setHeader("Cache-Control", "no-store");
+  }
+  next();
+});
+
 // Разрешаем браузерные запросы только с явно указанных адресов панели.
 const allowedOrigins = (process.env.ALLOWED_ORIGIN || "")
   .split(",")
@@ -30,7 +46,7 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json({ limit: "32kb" }));
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024, files: 1 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024, files: 1, fields: 4, fieldSize: 2048, parts: 5 } });
 
 const PORT = Number(process.env.PORT || 3000);
 const BOT_TOKEN = process.env.BOT_TOKEN;
@@ -45,7 +61,7 @@ if (!BOT_TOKEN || !DATABASE_URL || !ADMIN_API_KEY || !WEBHOOK_SECRET || allowedO
 
 const pool = new Pool({
   connectionString: DATABASE_URL,
-  ssl: process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: false },
+  ssl: process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: true },
   max: 5,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000
@@ -58,12 +74,90 @@ function safeEqual(a, b) {
   return left.length === right.length && crypto.timingSafeEqual(left, right);
 }
 
+const failedAuthAttempts = new Map();
+const AUTH_WINDOW_MS = 15 * 60 * 1000;
+const AUTH_MAX_FAILURES = 10;
+
+function pruneExpiredEntries(map, now) {
+  for (const [key, value] of map) {
+    if (value.resetAt <= now) map.delete(key);
+  }
+}
+
 function requireAdmin(req, res, next) {
+  const ip = req.ip || req.socket.remoteAddress || "unknown";
+  const now = Date.now();
+  let attempt = failedAuthAttempts.get(ip);
+
+  if (attempt && attempt.blockedUntil > now) {
+    res.setHeader("Retry-After", String(Math.ceil((attempt.blockedUntil - now) / 1000)));
+    return res.status(429).json({ ok: false, error: "Слишком много неверных попыток. Подожди 15 минут." });
+  }
+  if (attempt && attempt.resetAt <= now) {
+    failedAuthAttempts.delete(ip);
+    attempt = null;
+  }
+
   const supplied = req.get("X-Admin-Key") || "";
   if (!safeEqual(supplied, ADMIN_API_KEY)) {
+    if (!attempt) attempt = { failures: 0, resetAt: now + AUTH_WINDOW_MS, blockedUntil: 0 };
+    attempt.failures += 1;
+    if (attempt.failures >= AUTH_MAX_FAILURES) attempt.blockedUntil = now + AUTH_WINDOW_MS;
+    failedAuthAttempts.set(ip, attempt);
+    if (failedAuthAttempts.size > 10000) pruneExpiredEntries(failedAuthAttempts, now);
+    if (attempt.blockedUntil > now) {
+      res.setHeader("Retry-After", String(Math.ceil((attempt.blockedUntil - now) / 1000)));
+      return res.status(429).json({ ok: false, error: "Слишком много неверных попыток. Подожди 15 минут." });
+    }
     return res.status(401).json({ ok: false, error: "Неверный ключ доступа. Проверь ADMIN_API_KEY на своём Render." });
   }
+
+  failedAuthAttempts.delete(ip);
   next();
+}
+
+function createRateLimiter({ windowMs, max, message }) {
+  const hits = new Map();
+  return (req, res, next) => {
+    const now = Date.now();
+    const key = req.ip || req.socket.remoteAddress || "unknown";
+    let entry = hits.get(key);
+    if (!entry || entry.resetAt <= now) {
+      entry = { count: 0, resetAt: now + windowMs };
+      hits.set(key, entry);
+    }
+    if (entry.count >= max) {
+      res.setHeader("Retry-After", String(Math.ceil((entry.resetAt - now) / 1000)));
+      return res.status(429).json({ ok: false, error: message });
+    }
+    entry.count += 1;
+    if (hits.size > 10000) pruneExpiredEntries(hits, now);
+    next();
+  };
+}
+
+const mediaUploadLimiter = createRateLimiter({
+  windowMs: 60 * 1000, max: 8,
+  message: "Слишком много отправок файлов. Подожди минуту."
+});
+const voiceUploadLimiter = createRateLimiter({
+  windowMs: 60 * 1000, max: 5,
+  message: "Слишком много голосовых отправок. Подожди минуту."
+});
+const stickerImportLimiter = createRateLimiter({
+  windowMs: 60 * 1000, max: 3,
+  message: "Слишком много импортов стикерпаков. Подожди минуту."
+});
+
+function safeMediaContentType(value) {
+  const type = String(value || "").split(";")[0].trim().toLowerCase();
+  const allowed = new Set([
+    "image/jpeg", "image/png", "image/gif", "image/webp",
+    "video/mp4", "video/webm",
+    "audio/ogg", "audio/mpeg", "audio/mp4", "audio/wav", "audio/webm",
+    "application/x-tgsticker"
+  ]);
+  return allowed.has(type) ? type : "application/octet-stream";
 }
 
 async function telegram(method, payload) {
@@ -333,8 +427,9 @@ app.get("/api/chats/:chatId/avatar", requireAdmin, async (req, res) => {
     if (!fileResponse.ok) throw new Error("Telegram avatar HTTP " + fileResponse.status);
     const buffer = Buffer.from(await fileResponse.arrayBuffer());
     if (!buffer.length) return res.sendStatus(404);
-    res.setHeader("Content-Type", fileResponse.headers.get("content-type") || "image/jpeg");
-    res.setHeader("Cache-Control", "private, max-age=3600");
+    const avatarRemoteType = String(fileResponse.headers.get("content-type") || "").split(";")[0].toLowerCase();
+    res.setHeader("Content-Type", avatarRemoteType === "image/webp" ? "image/webp" : "image/jpeg");
+    res.setHeader("Cache-Control", "no-store");
     res.setHeader("Content-Length", String(buffer.length));
     res.end(buffer);
   } catch (error) {
@@ -400,7 +495,7 @@ app.get("/api/media/:messageId", requireAdmin, async (req, res) => {
     if (!result.rows.length) return res.status(404).json({ ok: false, error: "Файл не найден." });
     const media = result.rows[0];
     let fileBuffer = null;
-    let contentType = media.media_mime_type || "application/octet-stream";
+    let contentType = safeMediaContentType(media.media_mime_type);
     let lastError = null;
     // Telegram/Render connections can fail transiently; retry the complete download.
     for (let attempt = 1; attempt <= 3; attempt++) {
@@ -416,7 +511,7 @@ app.get("/api/media/:messageId", requireAdmin, async (req, res) => {
         const data = Buffer.from(await fileResponse.arrayBuffer());
         if (!data.length) throw new Error("Telegram вернул пустой файл.");
         fileBuffer = data;
-        contentType = media.media_mime_type || fileResponse.headers.get("content-type") || contentType;
+        contentType = safeMediaContentType(media.media_mime_type || fileResponse.headers.get("content-type") || contentType);
         break;
       } catch (error) {
         lastError = error;
@@ -428,8 +523,8 @@ app.get("/api/media/:messageId", requireAdmin, async (req, res) => {
     }
     if (!fileBuffer) throw lastError || new Error("Не удалось получить файл из Telegram.");
     res.setHeader("Content-Type", contentType);
-    res.setHeader("Cache-Control", "private, max-age=300");
-    res.setHeader("Content-Disposition", "inline");
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Content-Disposition", contentType === "application/octet-stream" ? "attachment" : "inline");
     res.setHeader("Content-Length", String(fileBuffer.length));
     res.end(fileBuffer);
   } catch (error) {
@@ -454,7 +549,7 @@ app.delete("/api/chats/:chatId/messages", requireAdmin, async (req, res) => {
   }
 });
 
-app.post("/api/send-media", requireAdmin, upload.single("file"), async (req, res) => {
+app.post("/api/send-media", requireAdmin, mediaUploadLimiter, upload.single("file"), async (req, res) => {
   const chatId = String(req.body?.chat_id || "");
   const caption = typeof req.body?.caption === "string" ? req.body.caption.trim() : "";
   const file = req.file;
@@ -510,7 +605,7 @@ app.post("/api/send-media", requireAdmin, upload.single("file"), async (req, res
 });
 
 
-app.post("/api/send-voice", requireAdmin, upload.single("voice"), async (req, res) => {
+app.post("/api/send-voice", requireAdmin, voiceUploadLimiter, upload.single("voice"), async (req, res) => {
   const chatId = String(req.body?.chat_id || "");
   const file = req.file;
   if (!/^-?\d+$/.test(chatId) || !file) {
@@ -627,7 +722,7 @@ app.get("/api/sticker-packs", requireAdmin, async (_req, res) => {
   }
 });
 
-app.post("/api/sticker-packs/import", requireAdmin, async (req, res) => {
+app.post("/api/sticker-packs/import", requireAdmin, stickerImportLimiter, async (req, res) => {
   const input = String(req.body?.link || req.body?.set_name || "").trim();
   const match = input.match(/(?:https?:\/\/)?t\.me\/addstickers\/([A-Za-z0-9_]+)/i) || input.match(/^([A-Za-z][A-Za-z0-9_]{0,63})$/);
   if (!match) return res.status(400).json({ ok: false, error: "Вставь ссылку вида https://t.me/addstickers/НазваниеНабора." });
@@ -694,8 +789,8 @@ app.get("/api/sticker-library/media/:itemId", requireAdmin, async (req, res) => 
     const buffer = Buffer.from(await response.arrayBuffer());
     if (!buffer.length) throw new Error("Telegram вернул пустое превью.");
     const previewMime = /\.(?:webp)$/i.test(fileInfo.file_path) ? "image/webp" : /\.(?:jpe?g)$/i.test(fileInfo.file_path) ? "image/jpeg" : result.rows[0].mime_type;
-    res.setHeader("Content-Type", previewMime);
-    res.setHeader("Cache-Control", "private, max-age=3600");
+    res.setHeader("Content-Type", safeMediaContentType(previewMime));
+    res.setHeader("Cache-Control", "no-store");
     res.end(buffer);
   } catch (error) {
     console.error("Sticker library preview failed:", error.message);
