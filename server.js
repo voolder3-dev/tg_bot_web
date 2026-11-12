@@ -429,7 +429,7 @@ app.get("/api/chats/:chatId/avatar", requireAdmin, async (req, res) => {
     if (!buffer.length) return res.sendStatus(404);
     const avatarRemoteType = String(fileResponse.headers.get("content-type") || "").split(";")[0].toLowerCase();
     res.setHeader("Content-Type", avatarRemoteType === "image/webp" ? "image/webp" : "image/jpeg");
-    res.setHeader("Cache-Control", "private, max-age=3600");
+    res.setHeader("Cache-Control", "no-store");
     res.setHeader("Content-Length", String(buffer.length));
     res.end(buffer);
   } catch (error) {
@@ -523,7 +523,7 @@ app.get("/api/media/:messageId", requireAdmin, async (req, res) => {
     }
     if (!fileBuffer) throw lastError || new Error("Не удалось получить файл из Telegram.");
     res.setHeader("Content-Type", contentType);
-    res.setHeader("Cache-Control", "private, max-age=300");
+    res.setHeader("Cache-Control", "no-store");
     res.setHeader("Content-Disposition", contentType === "application/octet-stream" ? "attachment" : "inline");
     res.setHeader("Content-Length", String(fileBuffer.length));
     res.end(fileBuffer);
@@ -790,7 +790,7 @@ app.get("/api/sticker-library/media/:itemId", requireAdmin, async (req, res) => 
     if (!buffer.length) throw new Error("Telegram вернул пустое превью.");
     const previewMime = /\.(?:webp)$/i.test(fileInfo.file_path) ? "image/webp" : /\.(?:jpe?g)$/i.test(fileInfo.file_path) ? "image/jpeg" : result.rows[0].mime_type;
     res.setHeader("Content-Type", safeMediaContentType(previewMime));
-    res.setHeader("Cache-Control", "private, max-age=3600");
+    res.setHeader("Cache-Control", "no-store");
     res.end(buffer);
   } catch (error) {
     console.error("Sticker library preview failed:", error.message);
