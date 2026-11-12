@@ -529,13 +529,7 @@ $("glassModeSelect").addEventListener("change",event=>applyGlassMode(event.targe
 applyTheme(localStorage.getItem("tg_dashboard_theme")||"midnight");
 applyGlassMode(localStorage.getItem("tg_dashboard_glass")||"glossy");
 applyColorMode(localStorage.getItem("tg_dashboard_mode")||"dark");
-applyDashboardSettings();
-$("preferencesBtn").addEventListener("click",()=>{$("dashboardSettingsModal").hidden=false;applyDashboardSettings();});
-$("messageSizeRange").addEventListener("input",event=>{dashboardSettings.messageSize=Number(event.target.value);applyDashboardSettings();saveDashboardSettings();});
-$("chatWidthRange").addEventListener("input",event=>{dashboardSettings.chatWidth=Number(event.target.value);applyDashboardSettings();saveDashboardSettings();});
-$("soundVolumeRange").addEventListener("input",event=>{dashboardSettings.volume=Number(event.target.value);applyDashboardSettings();saveDashboardSettings();});
-for(const [kind,prefix] of [["incoming","soundIncoming"],["send","soundSend"],["newChat","soundNewChat"]]){$(prefix+"Enabled").addEventListener("change",event=>{dashboardSettings.sounds[kind].enabled=event.target.checked;saveDashboardSettings();});$(prefix+"Style").addEventListener("change",event=>{dashboardSettings.sounds[kind].style=event.target.value;saveDashboardSettings();});}
-$("testSoundBtn").addEventListener("click",()=>playSoundEvent("incoming"));
+
 
 function tr(key){return (I18N[currentLang]&&I18N[currentLang][key])||I18N.ru[key]||key;}
 function updatePageTitle(){const chat=chats.find(item=>String(item.chat_id)===String(activeChatId));const suffix=" — Telegram Dashboard";if($("dashboard").hidden){document.title=(currentLang==="ru"?"Вход":"Sign in")+suffix;}else if(activeChatId){document.title=displayName(chat||{})+suffix;}else{document.title=(currentLang==="ru"?"Панель":"Dashboard")+suffix;}}
@@ -638,6 +632,13 @@ function playSoundEvent(kind){
  playToneSequence(patterns[kind]||patterns.incoming,.2,preset.volume*(dashboardSettings.volume/100));
 }
 function playSoftNotification(){playSoundEvent("incoming");}
+applyDashboardSettings();
+$("preferencesBtn").addEventListener("click",()=>{$("dashboardSettingsModal").hidden=false;applyDashboardSettings();});
+$("messageSizeRange").addEventListener("input",event=>{dashboardSettings.messageSize=Number(event.target.value);applyDashboardSettings();saveDashboardSettings();});
+$("chatWidthRange").addEventListener("input",event=>{dashboardSettings.chatWidth=Number(event.target.value);applyDashboardSettings();saveDashboardSettings();});
+$("soundVolumeRange").addEventListener("input",event=>{dashboardSettings.volume=Number(event.target.value);applyDashboardSettings();saveDashboardSettings();});
+for(const [kind,prefix] of [["incoming","soundIncoming"],["send","soundSend"],["newChat","soundNewChat"]]){$(prefix+"Enabled").addEventListener("change",event=>{dashboardSettings.sounds[kind].enabled=event.target.checked;saveDashboardSettings();});$(prefix+"Style").addEventListener("change",event=>{dashboardSettings.sounds[kind].style=event.target.value;saveDashboardSettings();});}
+$("testSoundBtn").addEventListener("click",()=>playSoundEvent("incoming"));
 function playThemeSound(){playToneSequence([{frequency:523.25,offset:0,duration:.13,wave:"triangle"},{frequency:659.25,offset:.075,duration:.15,wave:"sine"},{frequency:783.99,offset:.15,duration:.22,wave:"triangle"}],.18,.014);}
 function playHoverSound(){playToneSequence([{frequency:880,offset:0,duration:.055,wave:"sine",level:.55}],.07,.004);}
 function playChatOpenSound(){playToneSequence([{frequency:587.33,offset:0,duration:.12,wave:"triangle"},{frequency:880,offset:.075,duration:.19,wave:"sine"}],.17,.012);}
