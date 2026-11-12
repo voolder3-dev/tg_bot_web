@@ -156,7 +156,7 @@ https://ТВОЙ-СЕРВЕР.onrender.com/health
 
 ## 💻 Локальный запуск
 
-Нужен **Node.js 20 или новее**.
+Нужен **Node.js 22 или новее**.
 
 ```bash
 npm install
